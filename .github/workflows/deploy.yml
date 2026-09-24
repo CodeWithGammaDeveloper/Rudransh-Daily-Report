@@ -28,6 +28,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Build
+        env:
+          VITE_GOOGLE_SHEETS_WEBHOOK_URL: https://script.google.com/macros/s/AKfycbwIDIPqo0IJoh-AuVNXGz9oILAOyZhOXWngHoeeRIh9Ik69bCl2EL7RJ6MHStEUPFfY/exec
         run: npm run build
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
