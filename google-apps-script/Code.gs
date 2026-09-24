@@ -1,4 +1,4 @@
-const SPREADSHEET_ID = 'PASTE_YOUR_SPREADSHEET_ID_HERE';
+const SPREADSHEET_ID = '1DXfKmUFnArpysrQRnxSADNgXYj9LKLDPO8Oya6ThJK8';
 const SHEET_NAME = 'Daily Reports';
 
 function doPost(e) {
@@ -8,10 +8,10 @@ function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
     const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = spreadsheet.getSheetByName(SHEET_NAME);
+    const sheet = spreadsheet.getSheetByName(SHEET_NAME) || spreadsheet.getSheets()[0];
 
     if (!sheet) {
-      throw new Error(`Sheet tab "${SHEET_NAME}" was not found.`);
+      throw new Error('No sheet tab was found in the spreadsheet.');
     }
 
     const lastColumn = sheet.getLastColumn();

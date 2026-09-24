@@ -27,6 +27,6 @@ Employee login currently accepts the configured email `rudranshcapital@gmail.com
 
 The front end accepts a Google Apps Script web app URL through `VITE_GOOGLE_SHEETS_WEBHOOK_URL`. The endpoint should accept a JSON `POST` with the report object and append it to a dedicated sheet tab. Copy `.env.example` to `.env`, set the deployed `/exec` URL, and restart Vite.
 
-The Apps Script implementation in `google-apps-script/Code.gs` writes an automatic serial number into the first spreadsheet column. Add `S.No.` or `Serial Number` as the first heading, paste the script into the spreadsheet's Apps Script editor, set `SPREADSHEET_ID`, and redeploy the web app. The script uses a lock so simultaneous submissions receive different serial numbers.
+The Apps Script implementation in `google-apps-script/Code.gs` writes an automatic serial number into the first spreadsheet column. It is configured for spreadsheet ID `1DXfKmUFnArpysrQRnxSADNgXYj9LKLDPO8Oya6ThJK8`, uses the `Daily Reports` tab when available, and otherwise uses the first tab. Add `S.No.` or `Serial Number` as the first heading, paste the script into the spreadsheet's Apps Script editor, and redeploy the web app. The script uses a lock so simultaneous submissions receive different serial numbers.
 
 For production, move credential validation out of the browser and behind an authenticated server or company identity provider. The current client-side check is suitable for the internal prototype but any credential shipped in a front-end bundle can be inspected by users.
