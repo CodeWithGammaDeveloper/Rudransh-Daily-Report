@@ -28,3 +28,20 @@ export async function fetchReportsFromGoogleSheets() {
     return []
   }
 }
+
+export async function deleteReportsFromGoogleSheets(serialNumbers) {
+  const endpoint = import.meta.env.VITE_GOOGLE_SHEETS_WEBHOOK_URL
+  if (!endpoint || serialNumbers.length === 0) return { deleted: false }
+
+  try {
+    await fetch(endpoint, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'delete', serialNumbers }),
+    })
+    return { deleted: true }
+  } catch {
+    return { deleted: false }
+  }
+}

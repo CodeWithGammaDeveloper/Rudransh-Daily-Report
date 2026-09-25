@@ -80,6 +80,9 @@ body { background: #f6f7f8; }
 .clear-filters:hover { text-decoration: underline; }
 .admin-filter-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
 .admin-table-card { overflow: hidden; }
+.admin-table-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 15px; border-bottom: 1px solid #edf1f4; color: #8b9aa8; font-size: 10px; }
+.delete-filtered-button { border: 1px solid #efc9c0; border-radius: 6px; background: #fff8f6; color: #b65f50; padding: 8px 10px; display: inline-flex; align-items: center; gap: 7px; font-size: 10px; font-weight: 700; }
+.delete-filtered-button:hover { background: #fbe9e5; border-color: #dc9f93; }
 .admin-table-wrap { overflow-x: auto; }
 .admin-table-card table { min-width: 1150px; }
 .admin-table-card th { background: #f8fafb; padding: 13px 12px; color: #8393a3; }

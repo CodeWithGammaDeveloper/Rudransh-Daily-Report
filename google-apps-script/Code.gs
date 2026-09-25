@@ -36,6 +36,24 @@ function doPost(e) {
 			throw new Error('No sheet tab was found in the spreadsheet.');
 		}
 
+		if (data.action === 'delete') {
+			const serialNumbers = new Set((data.serialNumbers || []).map(String));
+			const lastRow = sheet.getLastRow();
+			let deletedCount = 0;
+
+			for (let rowIndex = lastRow; rowIndex >= 2; rowIndex -= 1) {
+				const serial = String(sheet.getRange(rowIndex, 1).getValue());
+				if (serialNumbers.has(serial)) {
+					sheet.deleteRow(rowIndex);
+					deletedCount += 1;
+				}
+			}
+
+			return ContentService
+				.createTextOutput(JSON.stringify({ success: true, deletedCount }))
+				.setMimeType(ContentService.MimeType.JSON);
+		}
+
 		const lastColumn = Math.max(sheet.getLastColumn(), 1);
 		const headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
 		const lastRow = sheet.getLastRow();

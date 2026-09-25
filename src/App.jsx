@@ -22,11 +22,12 @@ import {
   Search,
   Settings,
   ShieldCheck,
+  Trash2,
   UserRound,
   UsersRound,
   X,
 } from 'lucide-react'
-import { fetchReportsFromGoogleSheets, syncReportToGoogleSheets } from './services/reportSync'
+import { deleteReportsFromGoogleSheets, fetchReportsFromGoogleSheets, syncReportToGoogleSheets } from './services/reportSync'
 import logoSrc from '../logo.png'
 
 const initialReports = [
@@ -198,11 +199,25 @@ function AdminPortal({ username, reports, onLogout }) {
     setFilters((current) => ({ ...current, [name]: value }))
   }
 
+  async function deleteFilteredReports() {
+    if (visibleReports.length === 0) return
+    const confirmed = window.confirm(`Permanently delete ${visibleReports.length} filtered report${visibleReports.length === 1 ? '' : 's'} from the spreadsheet? This cannot be undone.`)
+    if (!confirmed) return
+
+    const serialNumbers = visibleReports.map((report) => report.id)
+    const result = await deleteReportsFromGoogleSheets(serialNumbers)
+    if (!result.deleted) return
+
+    const deletedIds = new Set(serialNumbers.map(String))
+    localStorage.setItem('rudransh-reports', JSON.stringify(reports.filter((report) => !deletedIds.has(String(report.id)))))
+    window.location.reload()
+  }
+
   return <div className="admin-workspace">
     <header className="report-header"><img className="company-logo" src={logoSrc} alt="Rudransh Capital Advisory Services" /><div className="report-header-actions"><span className="logged-in-user"><span className="mini-avatar">{getInitials(username)}</span>{username} · Admin</span><button className="logout-button" onClick={onLogout}><LogOut size={15} /> Logout</button></div></header>
     <main className="admin-main"><section className="admin-heading"><div><p className="eyebrow">ADMIN PORTAL</p><h1>Employee daily reports</h1><p className="subheading">Apply a filter to search the connected spreadsheet.</p></div>{hasFilters && <span className="admin-count">{visibleReports.length} reports</span>}</section>
       <section className="admin-filters"><div className="admin-filter-heading"><div><h2>Filter reports</h2><p>Use one filter or combine several.</p></div><button className="clear-filters" onClick={() => setFilters({ executive: '', date: '', customer: '', status: '' })}>Clear filters</button></div><div className="admin-filter-grid"><Field label="Executive name" name="executive" value={filters.executive} onChange={updateFilter} placeholder="Search executive" /><Field label="Report date" name="date" type="date" value={filters.date} onChange={updateFilter} /><Field label="Customer name" name="customer" value={filters.customer} onChange={updateFilter} placeholder="Search customer" /><label className="field"><span>Disbursement status</span><select name="status" value={filters.status} onChange={updateFilter}><option value="">All statuses</option><option>Login</option><option>Approved</option><option>Reject</option></select></label></div></section>
-      {hasFilters ? <section className="admin-table-card"><div className="admin-table-wrap"><table><thead><tr><th>S.No.</th><th>Executive</th><th>Date</th><th>Customer</th><th>Location</th><th>Loan amount</th><th>Bank</th><th>Login date</th><th>Status</th><th>Remark</th></tr></thead><tbody>{visibleReports.map((report, index) => <tr key={`${report.id}-${index}`}><td>{report.id || index + 1}</td><td>{report.executive}</td><td>{report.date || '-'}</td><td><strong>{report.customer}</strong></td><td>{report.location}</td><td>{formatCurrency(report.loanAmount)}</td><td>{report.bank}</td><td>{report.loginDate}</td><td><Status status={report.status} /></td><td className="remark-cell">{report.remark}</td></tr>)}</tbody></table></div>{visibleReports.length === 0 && <div className="empty-state">No reports match the selected filters.</div>}<div className="admin-table-footer">Showing {visibleReports.length} of {reports.length} reports</div></section> : <div className="admin-empty-prompt"><Search size={22} /><strong>Search employee reports</strong><span>Choose an executive, date, customer, or status filter to view matching data.</span></div>}
+      {hasFilters ? <section className="admin-table-card"><div className="admin-table-toolbar"><span>{visibleReports.length} matching report{visibleReports.length === 1 ? '' : 's'}</span>{visibleReports.length > 0 && <button className="delete-filtered-button" onClick={deleteFilteredReports}><Trash2 size={15} /> Delete filtered data</button>}</div><div className="admin-table-wrap"><table><thead><tr><th>S.No.</th><th>Executive</th><th>Date</th><th>Customer</th><th>Location</th><th>Loan amount</th><th>Bank</th><th>Login date</th><th>Status</th><th>Remark</th></tr></thead><tbody>{visibleReports.map((report, index) => <tr key={`${report.id}-${index}`}><td>{report.id || index + 1}</td><td>{report.executive}</td><td>{report.date || '-'}</td><td><strong>{report.customer}</strong></td><td>{report.location}</td><td>{formatCurrency(report.loanAmount)}</td><td>{report.bank}</td><td>{report.loginDate}</td><td><Status status={report.status} /></td><td className="remark-cell">{report.remark}</td></tr>)}</tbody></table></div>{visibleReports.length === 0 && <div className="empty-state">No reports match the selected filters.</div>}<div className="admin-table-footer">Showing {visibleReports.length} of {reports.length} reports</div></section> : <div className="admin-empty-prompt"><Search size={22} /><strong>Search employee reports</strong><span>Choose an executive, date, customer, or status filter to view matching data.</span></div>}
     </main>
   </div>
 }
