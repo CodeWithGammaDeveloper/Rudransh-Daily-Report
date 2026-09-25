@@ -2,9 +2,21 @@ const SPREADSHEET_ID = '1DXfKmUFnArpysrQRnxSADNgXYj9LKLDPO8Oya6ThJK8';
 const SHEET_NAME = 'Daily Reports';
 
 function doGet() {
+	const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+	const sheet = spreadsheet.getSheetByName(SHEET_NAME) || spreadsheet.getSheets()[0];
+	const values = sheet.getDataRange().getValues();
+	const headers = values.shift() || [];
+	const reports = values.filter((row) => row.some((value) => value !== '')).map((row) => {
+		const report = {};
+		headers.forEach((header, index) => {
+			report[String(header).trim()] = row[index];
+		});
+		return report;
+	});
+
 	return ContentService
-		.createTextOutput('Rudransh Capital report endpoint is active.')
-		.setMimeType(ContentService.MimeType.TEXT);
+		.createTextOutput(JSON.stringify({ success: true, reports }))
+		.setMimeType(ContentService.MimeType.JSON);
 }
 
 function doPost(e) {

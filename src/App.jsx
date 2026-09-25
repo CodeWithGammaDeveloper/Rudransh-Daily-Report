@@ -26,7 +26,7 @@ import {
   UsersRound,
   X,
 } from 'lucide-react'
-import { syncReportToGoogleSheets } from './services/reportSync'
+import { fetchReportsFromGoogleSheets, syncReportToGoogleSheets } from './services/reportSync'
 import logoSrc from '../logo.png'
 
 const initialReports = [
@@ -39,6 +39,8 @@ const initialReports = [
 const emptyReport = { executive: 'Aarav Mehta', date: '2026-09-24', customer: '', location: '', loanAmount: '', bank: '', loginDate: '2026-09-24', status: 'Login', remark: '' }
 const EMPLOYEE_EMAIL = 'rudranshcapital@gmail.com'
 const EMPLOYEE_PASSWORD = '@rudransh26(?)'
+const ADMIN_EMAIL = 'admin@gmail.com'
+const ADMIN_PASSWORD = '@admin_2026#'
 
 function formatCurrency(value) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value)
@@ -47,6 +49,7 @@ function formatCurrency(value) {
 function App() {
   const [username, setUsername] = useState('')
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [portal, setPortal] = useState('employee')
   const [activePage, setActivePage] = useState('Overview')
   const [reports, setReports] = useState(() => {
     const savedReports = localStorage.getItem('rudransh-reports')
@@ -75,8 +78,17 @@ function App() {
     setForm((current) => ({ ...current, executive: enteredUsername }))
   }
 
+  async function handleAdminLogin(enteredUsername) {
+    setUsername(enteredUsername)
+    setPortal('admin')
+    setIsLoggedIn(true)
+    const spreadsheetReports = await fetchReportsFromGoogleSheets()
+    if (spreadsheetReports.length > 0) setReports(spreadsheetReports.map(normalizeSheetReport))
+  }
+
   function handleLogout() {
     setIsLoggedIn(false)
+    setPortal('employee')
   }
 
   function handleChange(event) {
@@ -110,7 +122,8 @@ function App() {
     window.setTimeout(() => setNotice(''), 3500)
   }
 
-  if (!isLoggedIn) return <LoginScreen onLogin={handleLogin} />
+  if (!isLoggedIn) return <LoginScreen onLogin={handleLogin} onAdminLogin={handleAdminLogin} />
+  if (portal === 'admin') return <AdminPortal username={username} reports={reports} onLogout={handleLogout} />
 
   return <div className="report-workspace">
     <header className="report-header">
@@ -125,10 +138,26 @@ function App() {
   </div>
 }
 
-function LoginScreen({ onLogin }) {
+function normalizeSheetReport(report) {
+  return {
+    id: report['S.No.'] || report['Serial Number'] || Date.now(),
+    executive: report['Executive Name'] || report['Executive'] || '',
+    date: report.Date || '',
+    customer: report['Customer Name'] || report.Customer || '',
+    location: report.Location || '',
+    loanAmount: Number(report['Loan Amount'] || 0),
+    bank: report['Bank Name'] || report.Bank || '',
+    loginDate: report['Login Date'] || '',
+    status: report.Disbursement || report['Disbursement Status'] || '',
+    remark: report.Remark || '',
+  }
+}
+
+function LoginScreen({ onLogin, onAdminLogin }) {
   const [credentials, setCredentials] = useState({ username: '', email: '', password: '' })
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [mode, setMode] = useState('employee')
 
   function updateCredentials(event) {
     const { name, value } = event.target
@@ -138,16 +167,43 @@ function LoginScreen({ onLogin }) {
 
   function submit(event) {
     event.preventDefault()
-    const emailMatches = credentials.email.trim().toLowerCase() === EMPLOYEE_EMAIL
-    const passwordMatches = credentials.password === EMPLOYEE_PASSWORD
+    const expectedEmail = mode === 'admin' ? ADMIN_EMAIL : EMPLOYEE_EMAIL
+    const expectedPassword = mode === 'admin' ? ADMIN_PASSWORD : EMPLOYEE_PASSWORD
+    const emailMatches = credentials.email.trim().toLowerCase() === expectedEmail
+    const passwordMatches = credentials.password === expectedPassword
     if (!credentials.username.trim() || !emailMatches || !passwordMatches) {
       setError('Access denied. Check your username, email, and password.')
       return
     }
-    onLogin(credentials.username.trim())
+    if (mode === 'admin') onAdminLogin(credentials.username.trim())
+    else onLogin(credentials.username.trim())
   }
 
-  return <div className="login-page"><div className="login-visual"><div className="visual-brand"><img className="company-logo" src={logoSrc} alt="Rudransh Capital Advisory Services" /></div><div className="visual-copy"><p className="eyebrow">EMPLOYEE ACCESS ONLY</p><h1>Every visit.<br /><em>One clear report.</em></h1><p>Sign in to capture, track, and move every customer case forward.</p></div><div className="visual-footer"><span>Secure employee workspace</span><span>•</span><span>Pune, IN</span></div></div><div className="login-panel"><div className="login-form-wrap"><div className="mobile-brand"><img className="company-logo" src={logoSrc} alt="Rudransh Capital Advisory Services" /></div><p className="eyebrow">EMPLOYEE LOGIN</p><h2>Login to your workspace</h2><p className="form-intro">Use your assigned employee credentials to continue.</p><form onSubmit={submit}><Field label="Username" name="username" value={credentials.username} onChange={updateCredentials} placeholder="Enter your name" required /><Field label="Work email" name="email" type="email" value={credentials.email} onChange={updateCredentials} placeholder="rudranshcapital@gmail.com" required /><label className="field"><span>Password<b>*</b></span><span className="password-input"><input name="password" type={showPassword ? 'text' : 'password'} value={credentials.password} onChange={updateCredentials} placeholder="Enter your password" required /><button type="button" className="password-toggle" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? 'Hide password' : 'Show password'} title={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? <EyeOff size={16} /> : <Eye size={16} />}</button></span></label>{error && <p className="auth-error">{error}</p>}<button className="primary-button full-button" type="submit">Login <ArrowUpRight size={17} /></button></form><div className="login-help">Authorized employees only · Contact your administrator for access</div></div><span className="login-copyright">© 2026 Rudransh Capital Advisory Services</span></div></div>
+  return <div className="login-page"><div className="login-visual"><div className="visual-brand"><img className="company-logo" src={logoSrc} alt="Rudransh Capital Advisory Services" /></div><div className="visual-copy"><p className="eyebrow">{mode === 'admin' ? 'ADMIN PORTAL' : 'EMPLOYEE ACCESS ONLY'}</p><h1>Every visit.<br /><em>One clear report.</em></h1><p>{mode === 'admin' ? 'Review employee activity and keep every case moving.' : 'Sign in to capture, track, and move every customer case forward.'}</p></div><div className="visual-footer"><span>Secure workspace</span><span>•</span><span>Pune, IN</span></div></div><div className="login-panel"><div className="login-form-wrap"><div className="mobile-brand"><img className="company-logo" src={logoSrc} alt="Rudransh Capital Advisory Services" /></div><p className="eyebrow">{mode === 'admin' ? 'ADMIN LOGIN' : 'EMPLOYEE LOGIN'}</p><h2>{mode === 'admin' ? 'Login to admin portal' : 'Login to your workspace'}</h2><p className="form-intro">Use your assigned {mode} credentials to continue.</p><form onSubmit={submit}><Field label="Username" name="username" value={credentials.username} onChange={updateCredentials} placeholder="Enter your name" required /><Field label="Work email" name="email" type="email" value={credentials.email} onChange={updateCredentials} placeholder={mode === 'admin' ? 'admin@gmail.com' : 'rudranshcapital@gmail.com'} required /><label className="field"><span>Password<b>*</b></span><span className="password-input"><input name="password" type={showPassword ? 'text' : 'password'} value={credentials.password} onChange={updateCredentials} placeholder="Enter your password" required /><button type="button" className="password-toggle" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? 'Hide password' : 'Show password'} title={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? <EyeOff size={16} /> : <Eye size={16} />}</button></span></label>{error && <p className="auth-error">Access denied. Check your credentials.</p>}<button className="primary-button full-button" type="submit">{mode === 'admin' ? 'Enter admin portal' : 'Login'} <ArrowUpRight size={17} /></button></form><div className="login-help">{mode === 'admin' ? 'Employee access?' : 'Administrator access?'} <button type="button" className="text-button" onClick={() => { setMode(mode === 'admin' ? 'employee' : 'admin'); setError(''); setCredentials({ username: '', email: '', password: '' }) }}>{mode === 'admin' ? 'Login as employee' : 'Open admin portal'}</button></div></div><span className="login-copyright">© 2026 Rudransh Capital Advisory Services</span></div></div>
+}
+
+function AdminPortal({ username, reports, onLogout }) {
+  const [filters, setFilters] = useState({ executive: '', date: '', customer: '', status: '' })
+  const visibleReports = reports.filter((report) => {
+    const reportDate = report.date || report.loginDate || ''
+    return (!filters.executive || report.executive.toLowerCase().includes(filters.executive.toLowerCase()))
+      && (!filters.date || reportDate.includes(filters.date) || report.loginDate.includes(filters.date))
+      && (!filters.customer || report.customer.toLowerCase().includes(filters.customer.toLowerCase()))
+      && (!filters.status || report.status === filters.status)
+  })
+
+  function updateFilter(event) {
+    const { name, value } = event.target
+    setFilters((current) => ({ ...current, [name]: value }))
+  }
+
+  return <div className="admin-workspace">
+    <header className="report-header"><img className="company-logo" src={logoSrc} alt="Rudransh Capital Advisory Services" /><div className="report-header-actions"><span className="logged-in-user"><span className="mini-avatar">{getInitials(username)}</span>{username} · Admin</span><button className="logout-button" onClick={onLogout}><LogOut size={15} /> Logout</button></div></header>
+    <main className="admin-main"><section className="admin-heading"><div><p className="eyebrow">ADMIN PORTAL</p><h1>Employee daily reports</h1><p className="subheading">Review and filter every report submitted to the connected spreadsheet.</p></div><span className="admin-count">{visibleReports.length} reports</span></section>
+      <section className="admin-filters"><div className="admin-filter-heading"><div><h2>Filter reports</h2><p>Use one filter or combine several.</p></div><button className="clear-filters" onClick={() => setFilters({ executive: '', date: '', customer: '', status: '' })}>Clear filters</button></div><div className="admin-filter-grid"><Field label="Executive name" name="executive" value={filters.executive} onChange={updateFilter} placeholder="Search executive" /><Field label="Report date" name="date" type="date" value={filters.date} onChange={updateFilter} /><Field label="Customer name" name="customer" value={filters.customer} onChange={updateFilter} placeholder="Search customer" /><label className="field"><span>Disbursement status</span><select name="status" value={filters.status} onChange={updateFilter}><option value="">All statuses</option><option>Login</option><option>Approved</option><option>Reject</option></select></label></div></section>
+      <section className="admin-table-card"><div className="admin-table-wrap"><table><thead><tr><th>S.No.</th><th>Executive</th><th>Date</th><th>Customer</th><th>Location</th><th>Loan amount</th><th>Bank</th><th>Login date</th><th>Status</th><th>Remark</th></tr></thead><tbody>{visibleReports.map((report, index) => <tr key={`${report.id}-${index}`}><td>{report.id || index + 1}</td><td>{report.executive}</td><td>{report.date || '-'}</td><td><strong>{report.customer}</strong></td><td>{report.location}</td><td>{formatCurrency(report.loanAmount)}</td><td>{report.bank}</td><td>{report.loginDate}</td><td><Status status={report.status} /></td><td className="remark-cell">{report.remark}</td></tr>)}</tbody></table></div>{visibleReports.length === 0 && <div className="empty-state">No reports match the selected filters.</div>}<div className="admin-table-footer">Showing {visibleReports.length} of {reports.length} reports</div></section>
+    </main>
+  </div>
 }
 
 function Field({ label, type = 'text', placeholder, required, value, onChange, name }) { return <label className="field"><span>{label}{required && <b>*</b>}</span><input name={name} type={type} placeholder={placeholder} required={required} value={value} onChange={onChange} /></label> }

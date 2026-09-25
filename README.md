@@ -29,4 +29,6 @@ The front end accepts a Google Apps Script web app URL through `VITE_GOOGLE_SHEE
 
 The Apps Script implementation in `google-apps-script/Code.gs` writes an automatic serial number into the first spreadsheet column. It is configured for spreadsheet ID `1DXfKmUFnArpysrQRnxSADNgXYj9LKLDPO8Oya6ThJK8`, uses the `Daily Reports` tab when available, and otherwise uses the first tab. Add `S.No.` or `Serial Number` as the first heading, paste the script into the spreadsheet's Apps Script editor, and redeploy the web app. The script uses a lock so simultaneous submissions receive different serial numbers.
 
+The admin portal uses the same `/exec` URL with a `GET` request to load spreadsheet rows. After updating `Code.gs`, deploy a new web-app version so both `POST` submissions and `GET` report loading are active.
+
 For production, move credential validation out of the browser and behind an authenticated server or company identity provider. The current client-side check is suitable for the internal prototype but any credential shipped in a front-end bundle can be inspected by users.

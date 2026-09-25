@@ -14,3 +14,17 @@ export async function syncReportToGoogleSheets(report) {
     return { synced: false, reason: 'network-error' }
   }
 }
+
+export async function fetchReportsFromGoogleSheets() {
+  const endpoint = import.meta.env.VITE_GOOGLE_SHEETS_WEBHOOK_URL
+  if (!endpoint) return []
+
+  try {
+    const response = await fetch(endpoint)
+    if (!response.ok) return []
+    const payload = await response.json()
+    return Array.isArray(payload.reports) ? payload.reports : []
+  } catch {
+    return []
+  }
+}
