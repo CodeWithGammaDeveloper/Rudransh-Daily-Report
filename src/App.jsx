@@ -47,6 +47,13 @@ function formatCurrency(value) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value)
 }
 
+function formatReportDate(value) {
+  if (!value) return ''
+  const parsedDate = new Date(value)
+  if (Number.isNaN(parsedDate.getTime())) return String(value)
+  return parsedDate.toLocaleDateString('en-GB', { timeZone: 'UTC', day: '2-digit', month: 'short', year: 'numeric' })
+}
+
 function App() {
   const [username, setUsername] = useState('')
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -143,12 +150,14 @@ function normalizeSheetReport(report) {
   return {
     id: report['S.No.'] || report['Serial Number'] || Date.now(),
     executive: report['Executive Name'] || report['Executive'] || '',
-    date: report.Date || '',
+    date: formatReportDate(report.Date),
+    dateValue: report.Date || '',
     customer: report['Customer Name'] || report.Customer || '',
     location: report.Location || '',
     loanAmount: Number(report['Loan Amount'] || 0),
     bank: report['Bank Name'] || report.Bank || '',
-    loginDate: report['Login Date'] || '',
+    loginDate: formatReportDate(report['Login Date']),
+    loginDateValue: report['Login Date'] || '',
     status: report.Disbursement || report['Disbursement Status'] || '',
     remark: report.Remark || '',
   }
@@ -187,9 +196,9 @@ function AdminPortal({ username, reports, onLogout }) {
   const [filters, setFilters] = useState({ executive: '', date: '', customer: '', status: '' })
   const hasFilters = Object.values(filters).some(Boolean)
   const visibleReports = reports.filter((report) => {
-    const reportDate = report.date || report.loginDate || ''
+    const reportDate = report.dateValue || report.loginDateValue || report.date || report.loginDate || ''
     return (!filters.executive || report.executive.toLowerCase().includes(filters.executive.toLowerCase()))
-      && (!filters.date || reportDate.includes(filters.date) || report.loginDate.includes(filters.date))
+      && (!filters.date || reportDate.includes(filters.date) || report.date.includes(filters.date) || report.loginDate.includes(filters.date))
       && (!filters.customer || report.customer.toLowerCase().includes(filters.customer.toLowerCase()))
       && (!filters.status || report.status === filters.status)
   })
