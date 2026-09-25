@@ -87,6 +87,10 @@ body { background: #f6f7f8; }
 .admin-table-card td strong { color: #304f6d; }
 .remark-cell { max-width: 210px; white-space: normal; line-height: 1.35; }
 .admin-table-footer { border-top: 1px solid #edf1f4; padding: 14px 15px; color: #8b9aa8; font-size: 10px; }
+.admin-empty-prompt { min-height: 210px; background: #fff; border: 1px dashed #d8e1e8; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; color: #91a0ae; text-align: center; }
+.admin-empty-prompt svg { color: #c39a2d; }
+.admin-empty-prompt strong { color: #3a5875; font-family: 'Manrope'; font-size: 14px; }
+.admin-empty-prompt span { font-size: 11px; }
 
 @media (max-width: 760px) {
 	.report-header { height: 70px; padding: 0 17px; }
