@@ -11,7 +11,7 @@ npm run dev
 
 The app currently includes employee-only login validation, browser persistence for report history, and the requested fields:
 
-Employee login currently accepts the configured email `rudranshcapital@gmail.com` and password `@rudransh26(?)`. The username is entered at login and is used throughout the active workspace, including the welcome message, profile, and Executive Name field.
+Employee login currently accepts the configured email `Sales@rudranshcapital.com` and password `@rudransh26(?)`. Admin login uses `Narsu.pawar@rudranshcapital.com` with the admin password configured in the app. The username is entered at login and is used throughout the active workspace, including the welcome message, profile, and Executive Name field.
 
 - Executive name
 - Report date
