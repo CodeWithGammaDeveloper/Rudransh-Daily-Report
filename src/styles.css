@@ -52,10 +52,6 @@ body { background: #f6f7f8; }
 .password-input input { padding-right: 40px; }
 .password-toggle { position: absolute; top: 50%; right: 9px; transform: translateY(-50%); border: 0; background: transparent; color: #718093; display: grid; place-items: center; padding: 4px; }
 .password-toggle:hover { color: #193b62; }
-.login-visual::before { content: 'Welcome. Please fill in your details to continue.'; position: absolute; z-index: 2; left: 54px; bottom: 22%; max-width: 220px; padding: 12px 14px; border-left: 4px solid #d1a52f; border-radius: 9px 9px 9px 2px; background: #fff; color: #284665; box-shadow: 0 12px 28px rgba(8, 30, 56, .18); font-size: 11px; line-height: 1.45; animation: guide-enter 900ms cubic-bezier(.2,.8,.2,1) both, guide-float 4s ease-in-out 1.2s infinite; }
-@keyframes guide-enter { from { opacity: 0; transform: translate(-18px, 12px); } to { opacity: 1; transform: translate(0, 0); } }
-@keyframes guide-float { 0%, 100% { margin-bottom: 0; } 50% { margin-bottom: 5px; } }
-@media (prefers-reduced-motion: reduce) { .login-visual::before { animation: none; } }
 
 .report-workspace { min-height: 100vh; background: #f6f7f8; color: #22344d; }
 .report-header { height: 82px; padding: 0 6vw; background: #fff; border-bottom: 1px solid #e2e7ec; display: flex; align-items: center; justify-content: space-between; }
@@ -112,5 +108,4 @@ body { background: #f6f7f8; }
 	.admin-heading h1 { font-size: 26px; }
 	.admin-filter-grid { grid-template-columns: 1fr; gap: 14px; }
 	.admin-filters { padding: 18px 16px; }
-	.login-visual::before { left: 23px; bottom: 18px; max-width: 190px; font-size: 10px; }
 }
