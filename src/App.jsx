@@ -82,15 +82,31 @@ function formatCurrency(value) {
 
 function formatReportDate(value) {
   if (!value) return ''
+  const storedDate = String(value).trim().match(/^(\d{2})-(\d{2})-(\d{4})$/)
+  if (storedDate) return `${storedDate[1]}-${storedDate[2]}-${storedDate[3]}`
   const parsedDate = new Date(value)
   if (Number.isNaN(parsedDate.getTime())) return String(value)
-  return parsedDate.toLocaleDateString('en-GB', { timeZone: 'UTC', day: '2-digit', month: 'short', year: 'numeric' })
+  const day = String(parsedDate.getUTCDate()).padStart(2, '0')
+  const month = String(parsedDate.getUTCMonth() + 1).padStart(2, '0')
+  const year = parsedDate.getUTCFullYear()
+  return `${day}-${month}-${year}`
 }
 
 function reportDateInput(value) {
   if (!value) return ''
+  const storedDate = String(value).trim().match(/^(\d{2})-(\d{2})-(\d{4})$/)
+  if (storedDate) return `${storedDate[3]}-${storedDate[2]}-${storedDate[1]}`
+  const dateOnly = String(value).trim().match(/^(\d{4}-\d{2}-\d{2})$/)
+  if (dateOnly) return dateOnly[1]
   const parsedDate = new Date(value)
   return Number.isNaN(parsedDate.getTime()) ? String(value).slice(0, 10) : parsedDate.toISOString().slice(0, 10)
+}
+
+function dateForSpreadsheet(value) {
+  if (!value) return ''
+  const dateOnly = String(value).trim().match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (dateOnly) return `${dateOnly[3]}-${dateOnly[2]}-${dateOnly[1]}`
+  return formatReportDate(value)
 }
 
 function matchesDateFilter(value, filterValue) {
@@ -98,6 +114,9 @@ function matchesDateFilter(value, filterValue) {
   const rawValue = String(value).trim()
   const selectedDate = String(filterValue).slice(0, 10)
   const dates = new Set()
+
+  const storedDate = rawValue.match(/^(\d{2})-(\d{2})-(\d{4})$/)
+  if (storedDate) dates.add(`${storedDate[3]}-${storedDate[2]}-${storedDate[1]}`)
 
   const leadingDate = rawValue.match(/^(\d{4}-\d{2}-\d{2})/)
   if (leadingDate) dates.add(leadingDate[1])
@@ -173,7 +192,7 @@ function App() {
       id: Date.now(),
       formType,
       executive: form.executive,
-      date: form.date,
+      date: dateForSpreadsheet(form.date),
       customer: form.customer,
       location: form.location,
       companyName: form.companyName,
@@ -182,7 +201,7 @@ function App() {
       btFresh: form.btFresh,
       loanAmount: form.loanAmount ? Number(form.loanAmount) : '',
       bank: form.bank,
-      loginDate: form.loginDate,
+      loginDate: dateForSpreadsheet(form.loginDate),
       loginStatus: form.loginStatus,
       disbursementAmount: form.disbursementAmount ? Number(form.disbursementAmount) : '',
       cashBankDeviation: form.cashBankDeviation,
@@ -341,10 +360,14 @@ function AdminPortal({ username, reports, setReports, onLogout }) {
     event.preventDefault()
     setSavingEdit(true)
     setEditMessage('')
+    const spreadsheetValues = { ...editValues }
+    formSchema.filter((field) => field.type === 'date').forEach((field) => {
+      spreadsheetValues[field.key] = dateForSpreadsheet(editValues[field.key])
+    })
     const result = await updateReportInGoogleSheets({
       id: editingReport.id,
       sourceTab: selectedForm,
-      values: editValues,
+      values: spreadsheetValues,
     })
     setSavingEdit(false)
 
