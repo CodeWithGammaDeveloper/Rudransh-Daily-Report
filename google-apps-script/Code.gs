@@ -71,10 +71,14 @@ function doPost(e) {
 			date: data.date || '',
 			customer: data.customer || '',
 			location: data.location || '',
+			companyName: data.companyName || '',
+			netSalary: data.netSalary || '',
 			loanAmount: data.loanAmount || '',
 			bank: data.bank || '',
 			loginDate: data.loginDate || '',
 			status: data.status || '',
+			obligation: data.obligation || '',
+			btFresh: data.btFresh || '',
 			remark: data.remark || '',
 		};
 
@@ -83,13 +87,30 @@ function doPost(e) {
 			date: 'date',
 			customername: 'customer',
 			location: 'location',
+			companyname: 'companyName',
+			netsalary: 'netSalary',
 			loanamount: 'loanAmount',
 			bankname: 'bank',
 			logindate: 'loginDate',
 			disbursement: 'status',
 			disbursementstatus: 'status',
+			obligation: 'obligation',
+			btfresh: 'btFresh',
+			btorfresh: 'btFresh',
 			remark: 'remark',
 		};
+
+		const requiredHeaders = [
+			['companyname', 'Company Name'],
+			['netsalary', 'Net Salary'],
+			['obligation', 'Obligation'],
+			['btfresh', 'BT/FRESH'],
+		];
+		requiredHeaders.forEach(([key, label]) => {
+			const hasHeader = headers.some((header) => String(header).toLowerCase().replace(/[^a-z0-9]/g, '') === key);
+			if (!hasHeader) headers.push(label);
+		});
+		sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
 
 		const row = headers.map((header, index) => {
 			if (index === 0) return nextSerial;
