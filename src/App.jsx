@@ -93,6 +93,29 @@ function reportDateInput(value) {
   return Number.isNaN(parsedDate.getTime()) ? String(value).slice(0, 10) : parsedDate.toISOString().slice(0, 10)
 }
 
+function matchesDateFilter(value, filterValue) {
+  if (!value || !filterValue) return false
+  const rawValue = String(value).trim()
+  const selectedDate = String(filterValue).slice(0, 10)
+  const dates = new Set()
+
+  const leadingDate = rawValue.match(/^(\d{4}-\d{2}-\d{2})/)
+  if (leadingDate) dates.add(leadingDate[1])
+
+  const parsedDate = new Date(rawValue)
+  if (!Number.isNaN(parsedDate.getTime())) {
+    dates.add(parsedDate.toISOString().slice(0, 10))
+    dates.add(new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(parsedDate))
+  }
+
+  return dates.has(selectedDate)
+}
+
 function App() {
   const [username, setUsername] = useState('')
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -270,6 +293,7 @@ function AdminPortal({ username, reports, setReports, onLogout }) {
       const reportValue = field.type === 'date'
         ? report[`${field.key}Value`] || report[field.key]
         : report[field.key]
+      if (field.type === 'date') return matchesDateFilter(reportValue, filterValue)
       return String(reportValue ?? '').toLowerCase().includes(filterValue.toLowerCase())
     })
   })
