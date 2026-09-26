@@ -45,3 +45,20 @@ export async function deleteReportsFromGoogleSheets(serialNumbers) {
     return { deleted: false }
   }
 }
+
+export async function updateReportInGoogleSheets(report) {
+  const endpoint = import.meta.env.VITE_GOOGLE_SHEETS_WEBHOOK_URL
+  if (!endpoint) return { updated: false }
+
+  try {
+    await fetch(endpoint, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'update', ...report }),
+    })
+    return { updated: true }
+  } catch {
+    return { updated: false }
+  }
+}

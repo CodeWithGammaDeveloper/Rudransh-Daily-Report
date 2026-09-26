@@ -56,6 +56,96 @@ function doPost(e) {
 				.setMimeType(ContentService.MimeType.JSON);
 		}
 
+		if (data.action === 'update') {
+			const [tabName, serial] = String(data.id || '').split(':');
+			const allowedTabs = ['Leads Form', 'Login Form', 'Disbursement Form'];
+			if (!allowedTabs.includes(tabName) || serial === undefined) throw new Error('Invalid report reference.');
+			const sheet = spreadsheet.getSheetByName(tabName);
+			if (!sheet) throw new Error('The report tab was not found.');
+
+			const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+			let targetRow = 0;
+			for (let rowIndex = 2; rowIndex <= sheet.getLastRow(); rowIndex += 1) {
+				if (String(sheet.getRange(rowIndex, 1).getValue()) === serial) {
+					targetRow = rowIndex;
+					break;
+				}
+			}
+			if (!targetRow) throw new Error('The report row was not found.');
+
+			const valuesByHeader = {
+				'executive name': data.executive || '',
+				'date': data.date || '',
+				'customer name': data.customer || '',
+				'company name': data.companyName || '',
+				'net salary': data.netSalary ?? '',
+				'location': data.location || '',
+				'obligation': data.obligation || '',
+				'bt/fresh': data.btFresh || '',
+				'loan amount': data.loanAmount ?? '',
+				'login bank': data.bank || '',
+				'bank': data.bank || '',
+				'login date': data.loginDate || '',
+				'login status': data.loginStatus || '',
+				'disbursement amount': data.disbursementAmount ?? '',
+				'cash/bank deviation': data.cashBankDeviation || '',
+				'remark': data.remark || '',
+			};
+			const updatedRow = headers.map((header, index) => index === 0
+				? sheet.getRange(targetRow, 1).getValue()
+				: valuesByHeader[String(header).toLowerCase()] ?? '');
+			sheet.getRange(targetRow, 1, 1, updatedRow.length).setValues([updatedRow]);
+			return ContentService
+				.createTextOutput(JSON.stringify({ success: true, updated: true }))
+				.setMimeType(ContentService.MimeType.JSON);
+		}
+
+		if (data.action === 'update') {
+			const [tabName, serial] = String(data.id || '').split(':');
+			const allowedTabs = ['Leads Form', 'Login Form', 'Disbursement Form'];
+			if (!allowedTabs.includes(tabName) || serial === undefined) throw new Error('Invalid report reference.');
+			const sheet = spreadsheet.getSheetByName(tabName);
+			if (!sheet) throw new Error('The report tab was not found.');
+
+			const lastColumn = sheet.getLastColumn();
+			const headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+			let targetRow = 0;
+			for (let rowIndex = 2; rowIndex <= sheet.getLastRow(); rowIndex += 1) {
+				if (String(sheet.getRange(rowIndex, 1).getValue()) === serial) {
+					targetRow = rowIndex;
+					break;
+				}
+			}
+			if (!targetRow) throw new Error('The report row was not found.');
+
+			const valuesByHeader = {
+				'executive name': data.values.executive || '',
+				'date': data.values.date || '',
+				'customer name': data.values.customer || '',
+				'company name': data.values.companyName || '',
+				'net salary': data.values.netSalary ?? '',
+				'location': data.values.location || '',
+				'obligation': data.values.obligation || '',
+				'bt/fresh': data.values.btFresh || '',
+				'loan amount': data.values.loanAmount ?? '',
+				'login bank': data.values.bank || '',
+				'bank': data.values.bank || '',
+				'login date': data.values.loginDate || '',
+				'login status': data.values.loginStatus || '',
+				'disbursement amount': data.values.disbursementAmount ?? '',
+				'cash/bank deviation': data.values.cashBankDeviation || '',
+				'remark': data.values.remark || '',
+			};
+			const updatedRow = headers.map((header, index) => index === 0
+				? sheet.getRange(targetRow, 1).getValue()
+				: valuesByHeader[String(header).toLowerCase()] ?? '');
+			sheet.getRange(targetRow, 1, 1, updatedRow.length).setValues([updatedRow]);
+
+			return ContentService
+				.createTextOutput(JSON.stringify({ success: true, updated: true }))
+				.setMimeType(ContentService.MimeType.JSON);
+		}
+
 		const tabByForm = {
 			'Leads Form': 'Leads Form',
 			'Login Form': 'Login Form',
