@@ -260,6 +260,7 @@ function AdminPortal({ username, reports, setReports, onLogout }) {
   const availableForms = Object.keys(ADMIN_FORM_SCHEMAS)
   const formSchema = selectedForm ? ADMIN_FORM_SCHEMAS[selectedForm] : []
   const filterFields = formSchema.filter((field) => field.key !== 'remark')
+  const hasAppliedFilter = Object.values(filters).some((value) => String(value).trim() !== '')
 
   const visibleReports = reports.filter((report) => {
     if (!selectedForm || report.reportType !== selectedForm) return false
@@ -353,12 +354,12 @@ function AdminPortal({ username, reports, setReports, onLogout }) {
           <div className="admin-filter-heading"><div><h2>Filter {selectedForm}</h2><p>Filter by any column except serial number and remark. Combine filters as needed.</p></div><button className="clear-filters" onClick={() => setFilters({})}>Clear filters</button></div>
           <div className="admin-filter-grid">{filterFields.map((field) => <AdminSchemaField key={field.key} field={field} value={filters[field.key] || ''} onChange={updateFilter} filterMode />)}</div>
         </section>
-        <section className="admin-table-card">
+        {hasAppliedFilter ? <section className="admin-table-card">
           <div className="admin-table-toolbar"><span>{visibleReports.length} matching {selectedForm.toLowerCase()} entr{visibleReports.length === 1 ? 'y' : 'ies'}</span>{visibleReports.length > 0 && <button className="delete-filtered-button" onClick={deleteFilteredReports}><Trash2 size={15} /> Delete filtered data</button>}</div>
           <div className="admin-table-wrap"><table><thead><tr><th>S.No.</th>{formSchema.map((field) => <th key={field.key}>{field.label}</th>)}<th>Actions</th></tr></thead><tbody>{visibleReports.map((report) => <tr key={report.id}><td>{String(report.id).split(':').pop()}</td>{formSchema.map((field) => <td key={field.key} className={field.key === 'remark' ? 'remark-cell' : ''}>{field.type === 'number' && report[field.key] !== '' && report[field.key] != null ? formatCurrency(report[field.key]) : field.type === 'date' ? report[field.key] || '-' : report[field.key] || '-'}</td>)}<td><button className="admin-edit-button" onClick={() => beginEdit(report)}>Edit</button></td></tr>)}</tbody></table></div>
           {visibleReports.length === 0 && <div className="empty-state">No {selectedForm.toLowerCase()} entries match the selected filters.</div>}
           <div className="admin-table-footer">Showing {visibleReports.length} of {reports.filter((report) => report.reportType === selectedForm).length} {selectedForm.toLowerCase()} entries</div>
-        </section>
+        </section> : <div className="admin-empty-prompt"><Search size={22} /><strong>Apply a filter to view entries</strong><span>The table will appear after you filter {selectedForm.toLowerCase()} data.</span></div>}
       </> : <div className="admin-empty-prompt"><ClipboardList size={22} /><strong>Choose a report section</strong><span>Select Leads Form, Login Form, or Disbursement Form to view its entries.</span></div>}
     </main>
     {editingReport && <div className="admin-edit-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setEditingReport(null) }}><section className="admin-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="edit-report-title"><div className="admin-edit-heading"><div><p className="eyebrow">{selectedForm.toUpperCase()}</p><h2 id="edit-report-title">Edit report</h2></div><button className="icon-button" onClick={() => setEditingReport(null)} aria-label="Close edit form"><X size={18} /></button></div><form onSubmit={saveEdit}><div className="admin-edit-grid">{formSchema.map((field) => <AdminSchemaField key={field.key} field={field} value={editValues[field.key] ?? ''} onChange={(event) => setEditValues((current) => ({ ...current, [field.key]: event.target.value }))} />)}</div>{editMessage && <p className="auth-error">{editMessage}</p>}<div className="form-actions"><button type="button" className="secondary-button" onClick={() => setEditingReport(null)}>Cancel</button><button type="submit" className="primary-button" disabled={savingEdit}>{savingEdit ? 'Saving…' : 'Save changes'}</button></div></form></section></div>}
