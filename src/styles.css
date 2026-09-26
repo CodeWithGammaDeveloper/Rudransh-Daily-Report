@@ -66,6 +66,11 @@ body { background: #f6f7f8; }
 .report-main .form-card { box-shadow: 0 5px 20px rgba(25, 52, 80, .035); }
 .report-main .form-actions { padding-bottom: 8px; }
 .report-main .form-actions .primary-button { min-width: 165px; }
+.report-form-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 auto 16px; width: min(920px, calc(100% - 40px)); }
+.report-form-tab { border: 1px solid #dce4ea; border-radius: 7px; background: #fff; color: #587087; padding: 12px 10px; font-size: 12px; font-weight: 700; }
+.report-form-tab:hover { border-color: #c6a03b; color: #294667; }
+.report-form-tab.active { border-color: #173b63; background: #173b63; color: #fff; }
+.report-remark-field { margin-top: 18px; }
 .admin-workspace { min-height: 100vh; background: #f6f7f8; color: #22344d; }
 .admin-main { width: min(1440px, calc(100% - 70px)); margin: 0 auto; padding: 48px 0 65px; }
 .admin-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 27px; }
@@ -103,6 +108,8 @@ body { background: #f6f7f8; }
 	.logout-button { padding: 8px 9px; }
 	.report-main { width: calc(100% - 30px); padding: 30px 0 45px; }
 	.report-main .page-heading { margin-bottom: 22px; }
+	.report-form-tabs { width: calc(100% - 30px); gap: 5px; }
+	.report-form-tab { padding: 10px 5px; font-size: 10px; }
 	.admin-main { width: calc(100% - 30px); padding: 30px 0 45px; }
 	.admin-heading { align-items: flex-start; flex-direction: column; margin-bottom: 22px; }
 	.admin-heading h1 { font-size: 26px; }

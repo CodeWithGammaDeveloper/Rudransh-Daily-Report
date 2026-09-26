@@ -3,15 +3,20 @@ const SHEET_NAME = 'Daily Reports';
 
 function doGet() {
 	const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
-	const sheet = spreadsheet.getSheetByName(SHEET_NAME) || spreadsheet.getSheets()[0];
-	const values = sheet.getDataRange().getValues();
-	const headers = values.shift() || [];
-	const reports = values.filter((row) => row.some((value) => value !== '')).map((row) => {
-		const report = {};
-		headers.forEach((header, index) => {
-			report[String(header).trim()] = row[index];
+	const formTabs = ['Leads Form', 'Login Form', 'Disbursement Form'];
+	const reports = formTabs.flatMap((tabName) => {
+		const sheet = spreadsheet.getSheetByName(tabName);
+		if (!sheet || sheet.getLastRow() < 2) return [];
+
+		const values = sheet.getDataRange().getValues();
+		const headers = values.shift() || [];
+		return values.filter((row) => row.some((value) => value !== '')).map((row) => {
+			const report = { id: `${tabName}:${row[0]}`, formType: tabName, sourceTab: tabName };
+			headers.forEach((header, index) => {
+				report[String(header).trim()] = row[index];
+			});
+			return report;
 		});
-		return report;
 	});
 
 	return ContentService
@@ -30,31 +35,45 @@ function doPost(e) {
 
 		const data = JSON.parse(e.postData.contents);
 		const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
-		const sheet = spreadsheet.getSheetByName(SHEET_NAME) || spreadsheet.getSheets()[0];
-
-		if (!sheet) {
-			throw new Error('No sheet tab was found in the spreadsheet.');
-		}
 
 		if (data.action === 'delete') {
-			const serialNumbers = new Set((data.serialNumbers || []).map(String));
-			const lastRow = sheet.getLastRow();
 			let deletedCount = 0;
-
-			for (let rowIndex = lastRow; rowIndex >= 2; rowIndex -= 1) {
-				const serial = String(sheet.getRange(rowIndex, 1).getValue());
-				if (serialNumbers.has(serial)) {
-					sheet.deleteRow(rowIndex);
-					deletedCount += 1;
+			(data.serialNumbers || []).forEach((id) => {
+				const [tabName, serial] = String(id).split(':');
+				const targetSheet = spreadsheet.getSheetByName(tabName);
+				if (!targetSheet || serial === undefined) return;
+				for (let rowIndex = targetSheet.getLastRow(); rowIndex >= 2; rowIndex -= 1) {
+					if (String(targetSheet.getRange(rowIndex, 1).getValue()) === serial) {
+						targetSheet.deleteRow(rowIndex);
+						deletedCount += 1;
+						break;
+					}
 				}
-			}
+			});
 
 			return ContentService
 				.createTextOutput(JSON.stringify({ success: true, deletedCount }))
 				.setMimeType(ContentService.MimeType.JSON);
 		}
 
-		const lastColumn = Math.max(sheet.getLastColumn(), 1);
+		const tabByForm = {
+			'Leads Form': 'Leads Form',
+			'Login Form': 'Login Form',
+			'Disbursement Form': 'Disbursement Form',
+		};
+		const tabName = tabByForm[data.formType];
+		if (!tabName) throw new Error('Unknown report form type.');
+		let sheet = spreadsheet.getSheetByName(tabName);
+		if (!sheet) sheet = spreadsheet.insertSheet(tabName);
+
+		const headersByForm = {
+			'Leads Form': ['S.No.', 'Executive Name', 'Date', 'Customer Name', 'Company Name', 'Net Salary', 'Location', 'Obligation', 'BT/FRESH', 'Loan Amount', 'Login Bank', 'Remark'],
+			'Login Form': ['S.No.', 'Executive Name', 'Date', 'Customer Name', 'Loan Amount', 'Bank', 'Login Date', 'Login Status', 'Remark'],
+			'Disbursement Form': ['S.No.', 'Executive Name', 'Date', 'Customer Name', 'Disbursement Amount', 'Bank', 'Cash/Bank Deviation'],
+		};
+		const expectedHeaders = headersByForm[tabName];
+		sheet.getRange(1, 1, 1, expectedHeaders.length).setValues([expectedHeaders]);
+		const lastColumn = Math.max(sheet.getLastColumn(), expectedHeaders.length);
 		const headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
 		const lastRow = sheet.getLastRow();
 		const serialValues = lastRow > 1
@@ -66,61 +85,27 @@ function doPost(e) {
 		}, 0);
 		const nextSerial = highestSerial + 1;
 
-		const valuesByField = {
-			executive: data.executive || '',
-			date: data.date || '',
-			customer: data.customer || '',
-			location: data.location || '',
-			companyName: data.companyName || '',
-			netSalary: data.netSalary || '',
-			loanAmount: data.loanAmount || '',
-			bank: data.bank || '',
-			loginDate: data.loginDate || '',
-			status: data.status || '',
-			obligation: data.obligation || '',
-			btFresh: data.btFresh || '',
-			remark: data.remark || '',
+		const valuesByHeader = {
+			's.no.': nextSerial,
+			'serial number': nextSerial,
+			'executive name': data.executive || '',
+			'date': data.date || '',
+			'customer name': data.customer || '',
+			'company name': data.companyName || '',
+			'net salary': data.netSalary || '',
+			'location': data.location || '',
+			'obligation': data.obligation || '',
+			'bt/fresh': data.btFresh || '',
+			'loan amount': data.loanAmount || '',
+			'login bank': data.bank || '',
+			'bank': data.bank || '',
+			'login date': data.loginDate || '',
+			'login status': data.loginStatus || '',
+			'disbursement amount': data.disbursementAmount || '',
+			'cash/bank deviation': data.cashBankDeviation || '',
+			'remark': data.remark || '',
 		};
-
-		const headerMap = {
-			executivename: 'executive',
-			date: 'date',
-			customername: 'customer',
-			location: 'location',
-			companyname: 'companyName',
-			netsalary: 'netSalary',
-			loanamount: 'loanAmount',
-			bankname: 'bank',
-			logindate: 'loginDate',
-			disbursement: 'status',
-			disbursementstatus: 'status',
-			obligation: 'obligation',
-			btfresh: 'btFresh',
-			btorfresh: 'btFresh',
-			remark: 'remark',
-		};
-
-		const requiredHeaders = [
-			['companyname', 'Company Name'],
-			['netsalary', 'Net Salary'],
-			['obligation', 'Obligation'],
-			['btfresh', 'BT/FRESH'],
-		];
-		requiredHeaders.forEach(([key, label]) => {
-			const hasHeader = headers.some((header) => String(header).toLowerCase().replace(/[^a-z0-9]/g, '') === key);
-			if (!hasHeader) headers.push(label);
-		});
-		sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-
-		const row = headers.map((header, index) => {
-			if (index === 0) return nextSerial;
-
-			const normalizedHeader = String(header)
-				.toLowerCase()
-				.replace(/[^a-z0-9]/g, '');
-			const field = headerMap[normalizedHeader];
-			return field ? valuesByField[field] : '';
-		});
+		const row = expectedHeaders.map((header) => valuesByHeader[String(header).toLowerCase()] ?? '');
 
 		sheet.appendRow(row);
 

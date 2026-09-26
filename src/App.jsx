@@ -37,7 +37,7 @@ const initialReports = [
   { id: 4, executive: 'Meera Shah', customer: 'Arjun Rao', location: 'Faridabad', loanAmount: 710000, bank: 'SBI', loginDate: '23 Sep 2026', status: 'Reject', remark: 'Credit policy mismatch.', time: '02:10 PM' },
 ]
 
-const emptyReport = { executive: 'Aarav Mehta', date: '2026-09-24', customer: '', location: '', companyName: '', netSalary: '', loanAmount: '', bank: '', loginDate: '2026-09-24', status: 'Login', obligation: '', btFresh: '', remark: '' }
+const emptyReport = { executive: '', date: '2026-09-24', customer: '', companyName: '', netSalary: '', location: '', obligation: '', btFresh: '', loanAmount: '', bank: '', loginDate: '2026-09-24', loginStatus: '', remark: '', disbursementAmount: '', cashBankDeviation: '' }
 const EMPLOYEE_EMAIL = 'sales@rudranshcapital.com'
 const EMPLOYEE_PASSWORD = '@rudransh26(?)'
 const ADMIN_EMAIL = 'narsu.pawar@rudranshcapital.com'
@@ -64,6 +64,7 @@ function App() {
     return savedReports ? JSON.parse(savedReports) : initialReports
   })
   const [form, setForm] = useState(emptyReport)
+  const [formType, setFormType] = useState('Leads Form')
   const [query, setQuery] = useState('')
   const [notice, setNotice] = useState('')
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
@@ -108,19 +109,22 @@ function App() {
     event.preventDefault()
     const newReport = {
       id: Date.now(),
+      reportType: formType,
       executive: form.executive,
       date: form.date,
       customer: form.customer,
       location: form.location,
       companyName: form.companyName,
-      netSalary: Number(form.netSalary),
-      loanAmount: Number(form.loanAmount),
-      bank: form.bank,
-      loginDate: new Date(form.loginDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-      status: form.status,
+      netSalary: form.netSalary ? Number(form.netSalary) : '',
       obligation: form.obligation,
       btFresh: form.btFresh,
-      remark: form.remark || 'No additional remarks.',
+      loanAmount: form.loanAmount ? Number(form.loanAmount) : '',
+      bank: form.bank,
+      loginDate: form.loginDate,
+      loginStatus: form.loginStatus,
+      disbursementAmount: form.disbursementAmount ? Number(form.disbursementAmount) : '',
+      cashBankDeviation: form.cashBankDeviation,
+      remark: form.remark,
       time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
     }
     setReports((current) => {
@@ -130,7 +134,7 @@ function App() {
     })
     void syncReportToGoogleSheets(newReport)
     setForm({ ...emptyReport, executive: username })
-    setNotice('Report saved and queued for spreadsheet sync')
+    setNotice(`${formType} submitted successfully`)
     window.setTimeout(() => setNotice(''), 3500)
   }
 
@@ -146,13 +150,14 @@ function App() {
       </div>
     </header>
     {notice && <div className="toast"><span className="toast-check"><Check size={15} /></span>{notice}<button onClick={() => setNotice('')} aria-label="Dismiss"><X size={15} /></button></div>}
-    <main className="report-main"><ReportForm form={form} onChange={handleChange} onSubmit={submitReport} /></main>
+    <main className="report-main"><ReportForm form={form} formType={formType} setFormType={setFormType} username={username} onChange={handleChange} onSubmit={submitReport} /></main>
   </div>
 }
 
 function normalizeSheetReport(report) {
   return {
-    id: report['S.No.'] || report['Serial Number'] || Date.now(),
+    id: report.id || report['S.No.'] || report['Serial Number'] || Date.now(),
+    reportType: report.reportType || report['Form Type'] || '',
     executive: report['Executive Name'] || report['Executive'] || '',
     date: formatReportDate(report.Date),
     dateValue: report.Date || '',
@@ -160,13 +165,19 @@ function normalizeSheetReport(report) {
     location: report.Location || '',
     companyName: report['Company Name'] || '',
     netSalary: Number(report['Net Salary'] || 0),
+    obligation: report.Obligation || '',
+    btFresh: report['BT/FRESH'] || '',
     loanAmount: Number(report['Loan Amount'] || 0),
-    bank: report['Bank Name'] || report.Bank || '',
+    bank: report['Login Bank'] || report.Bank || '',
     loginDate: formatReportDate(report['Login Date']),
     loginDateValue: report['Login Date'] || '',
-    status: report.Disbursement || report['Disbursement Status'] || '',
-    obligation: report.Obligation || '',
-    btFresh: report['BT/FRESH'] || report['BT or FRESH'] || '',
+    loginStatus: report['Login Status'] || '',
+    disbursementAmount: Number(report['Disbursement Amount'] || 0),
+    cashBankDeviation: report['Cash/Bank Deviation'] || '',
+    status: report['Login Status'] || report.Disbursement || report['Disbursement Status'] || '',
+    loginStatus: report['Login Status'] || '',
+    disbursementAmount: Number(report['Disbursement Amount'] || 0),
+    cashBankDeviation: report['Cash/Bank Deviation'] || '',
     remark: report.Remark || '',
   }
 }
@@ -205,10 +216,11 @@ function AdminPortal({ username, reports, onLogout }) {
   const hasFilters = Object.values(filters).some(Boolean)
   const visibleReports = reports.filter((report) => {
     const reportDate = report.dateValue || report.loginDateValue || report.date || report.loginDate || ''
+    const reportStatus = report.loginStatus || report.cashBankDeviation || report.status || ''
     return (!filters.executive || report.executive.toLowerCase().includes(filters.executive.toLowerCase()))
       && (!filters.date || reportDate.includes(filters.date) || report.date.includes(filters.date) || report.loginDate.includes(filters.date))
       && (!filters.customer || report.customer.toLowerCase().includes(filters.customer.toLowerCase()))
-      && (!filters.status || report.status === filters.status)
+      && (!filters.status || reportStatus === filters.status)
   })
 
   function updateFilter(event) {
@@ -233,8 +245,8 @@ function AdminPortal({ username, reports, onLogout }) {
   return <div className="admin-workspace">
     <header className="report-header"><img className="company-logo" src={logoSrc} alt="Rudransh Capital Advisory Services" /><div className="report-header-actions"><span className="logged-in-user"><span className="mini-avatar">{getInitials(username)}</span>{username} · Admin</span><button className="logout-button" onClick={onLogout}><LogOut size={15} /> Logout</button></div></header>
     <main className="admin-main"><section className="admin-heading"><div><p className="eyebrow">ADMIN PORTAL</p><h1>Employee daily reports</h1><p className="subheading">Apply a filter to search the connected spreadsheet.</p></div>{hasFilters && <span className="admin-count">{visibleReports.length} reports</span>}</section>
-      <section className="admin-filters"><div className="admin-filter-heading"><div><h2>Filter reports</h2><p>Use one filter or combine several.</p></div><button className="clear-filters" onClick={() => setFilters({ executive: '', date: '', customer: '', status: '' })}>Clear filters</button></div><div className="admin-filter-grid"><Field label="Executive name" name="executive" value={filters.executive} onChange={updateFilter} placeholder="Search executive" /><Field label="Report date" name="date" type="date" value={filters.date} onChange={updateFilter} /><Field label="Customer name" name="customer" value={filters.customer} onChange={updateFilter} placeholder="Search customer" /><label className="field"><span>Disbursement status</span><select name="status" value={filters.status} onChange={updateFilter}><option value="">All statuses</option><option>Login</option><option>Approved</option><option>Reject</option></select></label></div></section>
-      {hasFilters ? <section className="admin-table-card"><div className="admin-table-toolbar"><span>{visibleReports.length} matching report{visibleReports.length === 1 ? '' : 's'}</span>{visibleReports.length > 0 && <button className="delete-filtered-button" onClick={deleteFilteredReports}><Trash2 size={15} /> Delete filtered data</button>}</div><div className="admin-table-wrap"><table><thead><tr><th>S.No.</th><th>Executive</th><th>Date</th><th>Customer</th><th>Location</th><th>Company</th><th>Net salary</th><th>Loan amount</th><th>Bank</th><th>Login date</th><th>Status</th><th>Obligation</th><th>BT/FRESH</th><th>Remark</th></tr></thead><tbody>{visibleReports.map((report, index) => <tr key={`${report.id}-${index}`}><td>{report.id || index + 1}</td><td>{report.executive}</td><td>{report.date || '-'}</td><td><strong>{report.customer}</strong></td><td>{report.location}</td><td>{report.companyName}</td><td>{formatCurrency(report.netSalary)}</td><td>{formatCurrency(report.loanAmount)}</td><td>{report.bank}</td><td>{report.loginDate}</td><td><Status status={report.status} /></td><td>{report.obligation}</td><td>{report.btFresh}</td><td className="remark-cell">{report.remark}</td></tr>)}</tbody></table></div>{visibleReports.length === 0 && <div className="empty-state">No reports match the selected filters.</div>}<div className="admin-table-footer">Showing {visibleReports.length} of {reports.length} reports</div></section> : <div className="admin-empty-prompt"><Search size={22} /><strong>Search employee reports</strong><span>Choose an executive, date, customer, or status filter to view matching data.</span></div>}
+      <section className="admin-filters"><div className="admin-filter-heading"><div><h2>Filter reports</h2><p>Use one filter or combine several.</p></div><button className="clear-filters" onClick={() => setFilters({ executive: '', date: '', customer: '', status: '' })}>Clear filters</button></div><div className="admin-filter-grid"><Field label="Executive name" name="executive" value={filters.executive} onChange={updateFilter} placeholder="Search executive" /><Field label="Report date" name="date" type="date" value={filters.date} onChange={updateFilter} /><Field label="Customer name" name="customer" value={filters.customer} onChange={updateFilter} placeholder="Search customer" /><label className="field"><span>Login/disbursement status</span><select name="status" value={filters.status} onChange={updateFilter}><option value="">All statuses</option><option>Login</option><option>Approved</option><option>Reject</option><option>Yes</option><option>No</option><option>Cash</option><option>Bank Deviation</option></select></label></div></section>
+      {hasFilters ? <section className="admin-table-card"><div className="admin-table-toolbar"><span>{visibleReports.length} matching report{visibleReports.length === 1 ? '' : 's'}</span>{visibleReports.length > 0 && <button className="delete-filtered-button" onClick={deleteFilteredReports}><Trash2 size={15} /> Delete filtered data</button>}</div><div className="admin-table-wrap"><table><thead><tr><th>S.No.</th><th>Form</th><th>Executive</th><th>Date</th><th>Customer</th><th>Company</th><th>Net salary</th><th>Location</th><th>Obligation</th><th>BT/FRESH</th><th>Loan amount</th><th>Bank</th><th>Login date</th><th>Login status</th><th>Disbursement amount</th><th>Cash/Bank deviation</th><th>Remark</th></tr></thead><tbody>{visibleReports.map((report, index) => <tr key={`${report.id}-${index}`}><td>{report.id || index + 1}</td><td>{report.reportType}</td><td>{report.executive}</td><td>{report.date || '-'}</td><td><strong>{report.customer}</strong></td><td>{report.companyName}</td><td>{report.netSalary ? formatCurrency(report.netSalary) : '-'}</td><td>{report.location}</td><td>{report.obligation}</td><td>{report.btFresh}</td><td>{report.loanAmount ? formatCurrency(report.loanAmount) : '-'}</td><td>{report.bank}</td><td>{report.loginDate}</td><td>{report.loginStatus || '-'}</td><td>{report.disbursementAmount ? formatCurrency(report.disbursementAmount) : '-'}</td><td>{report.cashBankDeviation}</td><td className="remark-cell">{report.remark}</td></tr>)}</tbody></table></div>{visibleReports.length === 0 && <div className="empty-state">No reports match the selected filters.</div>}<div className="admin-table-footer">Showing {visibleReports.length} of {reports.length} reports</div></section> : <div className="admin-empty-prompt"><Search size={22} /><strong>Search employee reports</strong><span>Choose an executive, date, customer, or status filter to view matching data.</span></div>}
     </main>
   </div>
 }
@@ -250,52 +262,60 @@ function Metric({ icon, label, value, trend, caption, tone }) { return <div clas
 function ReportList({ reports }) { return <div className="report-list">{reports.map((report) => <div className="report-row" key={report.id}><div className="customer-avatar">{report.customer.split(' ').map((word) => word[0]).join('')}</div><div className="report-person"><strong>{report.customer}</strong><span>{report.location} · {report.bank}</span></div><div className="report-amount">{formatCurrency(report.loanAmount)}</div><Status status={report.status} /><span className="report-time">{report.time}</span></div>)}</div> }
 function Status({ status }) { return <span className={`status status-${status.toLowerCase()}`}><i />{status}</span> }
 
-function ReportForm({ form, onChange, onSubmit }) {
+function ReportForm({ form, formType, setFormType, username, onChange, onSubmit }) {
+  const formTabs = ['Leads Form', 'Login Form', 'Disbursement Form']
+
   return (
     <>
       <section className="page-heading">
         <div>
-          <p className="eyebrow">DAILY ACTIVITY</p>
-          <h1>New daily report</h1>
-          <p className="subheading">Capture the details while the conversation is still fresh.</p>
+          <p className="eyebrow">WELCOME</p>
+          <h1>Welcome, {username}</h1>
+          <p className="subheading">Choose a report form and enter the customer details.</p>
         </div>
         <span className="secure-note"><ShieldCheck size={17} /> Saved securely</span>
       </section>
+      <div className="report-form-tabs" role="tablist" aria-label="Report form type">
+        {formTabs.map((tab) => (
+          <button key={tab} type="button" role="tab" aria-selected={formType === tab} className={formType === tab ? 'report-form-tab active' : 'report-form-tab'} onClick={() => setFormType(tab)}>{tab}</button>
+        ))}
+      </div>
       <form className="report-form" onSubmit={onSubmit}>
         <div className="form-card">
           <div className="form-card-heading">
-            <div><span className="step-number">01</span><div><h2>Visit details</h2><p>Tell us who you met and where.</p></div></div>
+            <div><span className="step-number">{formTabs.indexOf(formType) + 1}</span><div><h2>{formType}</h2><p>Executive: {username}</p></div></div>
             <span className="required-note">* Required</span>
           </div>
           <div className="field-grid">
-            <Field label="Executive name" name="executive" value={form.executive} onChange={onChange} required />
-            <Field label="Report date" name="date" type="date" value={form.date} onChange={onChange} required />
+            <Field label="Date" name="date" type="date" value={form.date} onChange={onChange} required />
             <Field label="Customer name" name="customer" value={form.customer} onChange={onChange} placeholder="Enter customer name" required />
-            <Field label="Location" name="location" value={form.location} onChange={onChange} placeholder="City or area" required />
+
+            {formType === 'Leads Form' && <>
+              <Field label="Company name" name="companyName" value={form.companyName} onChange={onChange} placeholder="Enter company name" required />
+              <Field label="Net salary" name="netSalary" type="number" value={form.netSalary} onChange={onChange} placeholder="Enter net salary" required />
+              <Field label="Location" name="location" value={form.location} onChange={onChange} placeholder="City or area" required />
+              <label className="field"><span>Obligation<b>*</b></span><select name="obligation" value={form.obligation} onChange={onChange} required><option value="">Select obligation</option><option>PL/BL</option><option>HL</option><option>CC</option><option>APP LOAN</option><option>AUTO LOAN</option><option>OTHERS</option></select></label>
+              <label className="field"><span>BT/FRESH<b>*</b></span><select name="btFresh" value={form.btFresh} onChange={onChange} required><option value="">Select type</option><option>BT</option><option>FRESH</option></select></label>
+              <Field label="Loan amount" name="loanAmount" type="number" value={form.loanAmount} onChange={onChange} placeholder="Enter loan amount" required />
+              <Field label="Login bank" name="bank" value={form.bank} onChange={onChange} placeholder="Enter bank name" required />
+            </>}
+
+            {formType === 'Login Form' && <>
+              <Field label="Loan amount" name="loanAmount" type="number" value={form.loanAmount} onChange={onChange} placeholder="Enter loan amount" required />
+              <Field label="Bank" name="bank" value={form.bank} onChange={onChange} placeholder="Enter bank name" required />
+              <Field label="Login date" name="loginDate" type="date" value={form.loginDate} onChange={onChange} required />
+              <label className="field"><span>Login status<b>*</b></span><select name="loginStatus" value={form.loginStatus} onChange={onChange} required><option value="">Select status</option><option>Yes</option><option>No</option></select></label>
+            </>}
+
+            {formType === 'Disbursement Form' && <>
+              <Field label="Disbursement amount" name="disbursementAmount" type="number" value={form.disbursementAmount} onChange={onChange} placeholder="Enter disbursement amount" required />
+              <Field label="Bank" name="bank" value={form.bank} onChange={onChange} placeholder="Enter bank name" required />
+              <label className="field"><span>Cash/Bank deviation<b>*</b></span><select name="cashBankDeviation" value={form.cashBankDeviation} onChange={onChange} required><option value="">Select option</option><option>Cash</option><option>Bank Deviation</option></select></label>
+            </>}
           </div>
+          {(formType === 'Leads Form' || formType === 'Login Form') && <label className="field report-remark-field"><span>Remark</span><textarea name="remark" value={form.remark} onChange={onChange} placeholder="Add notes" rows="3" /></label>}
         </div>
-        <div className="form-card">
-          <div className="form-card-heading">
-            <div><span className="step-number">02</span><div><h2>Loan details</h2><p>Keep the case information up to date.</p></div></div>
-          </div>
-          <div className="field-grid">
-            <Field label="Company name" name="companyName" value={form.companyName} onChange={onChange} placeholder="Enter company name" required />
-            <Field label="Net salary" name="netSalary" type="number" value={form.netSalary} onChange={onChange} placeholder="Enter monthly net salary" required />
-            <Field label="Loan amount" name="loanAmount" type="number" value={form.loanAmount} onChange={onChange} placeholder="e.g. 1500000" required />
-            <Field label="Bank name" name="bank" value={form.bank} onChange={onChange} placeholder="Select or type bank" required />
-            <Field label="Login date" name="loginDate" type="date" value={form.loginDate} onChange={onChange} required />
-            <label className="field"><span>Disbursement status<b>*</b></span><select name="status" value={form.status} onChange={onChange}><option>Login</option><option>Approved</option><option>Reject</option></select></label>
-            <label className="field"><span>Obligation<b>*</b></span><select name="obligation" value={form.obligation} onChange={onChange} required><option value="">Select obligation</option><option>PL/BL</option><option>HL</option><option>CC</option><option>APP LOAN</option><option>AUTO LOAN</option><option>OTHERS</option></select></label>
-            <label className="field"><span>BT/FRESH<b>*</b></span><select name="btFresh" value={form.btFresh} onChange={onChange} required><option value="">Select type</option><option>BT</option><option>FRESH</option></select></label>
-          </div>
-        </div>
-        <div className="form-card">
-          <div className="form-card-heading">
-            <div><span className="step-number">03</span><div><h2>Final note</h2><p>Leave a useful handoff for your team.</p></div></div>
-          </div>
-          <label className="field"><span>Remark</span><textarea name="remark" value={form.remark} onChange={onChange} placeholder="Add context, next steps, or anything the team should know..." rows="4" /></label>
-        </div>
-        <div className="form-actions"><button type="submit" className="primary-button"><Check size={18} /> Submit report</button></div>
+        <div className="form-actions"><button type="submit" className="primary-button"><Check size={18} /> Submit {formType}</button></div>
       </form>
     </>
   )
