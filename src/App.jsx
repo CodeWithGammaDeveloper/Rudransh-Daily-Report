@@ -109,7 +109,7 @@ function App() {
     event.preventDefault()
     const newReport = {
       id: Date.now(),
-      reportType: formType,
+      formType,
       executive: form.executive,
       date: form.date,
       customer: form.customer,
