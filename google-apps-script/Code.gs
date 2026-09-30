@@ -75,30 +75,37 @@ function doPost(e) {
 			if (!targetRow) throw new Error('The report row was not found.');
 
 			const valuesByHeader = {
-				'executive name': data.values.executive || '',
-				'date': data.values.date || '',
-				'customer name': data.values.customer || '',
-				'company name': data.values.companyName || '',
-				'net salary': data.values.netSalary ?? '',
-				'location': data.values.location || '',
-				'obligation': data.values.obligation || '',
-				'bt/fresh': data.values.btFresh || '',
-				'loan amount': data.values.loanAmount ?? '',
-				'login bank': data.values.bank || '',
-				'bank': data.values.bank || '',
-				'login date': data.values.loginDate || '',
-				'login status': data.values.loginStatus || '',
-				'disbursement amount': data.values.disbursementAmount ?? '',
-				'cash/bank deviation': data.values.cashBankDeviation || '',
-				'remark': data.values.remark || '',
+				executivename: 'executive',
+				date: 'date',
+				customername: 'customer',
+				companyname: 'companyName',
+				netsalary: 'netSalary',
+				location: 'location',
+				obligation: 'obligation',
+				btfresh: 'btFresh',
+				loanamount: 'loanAmount',
+				loginbank: 'bank',
+				bank: 'bank',
+				logindate: 'loginDate',
+				loginstatus: 'loginStatus',
+				disbursementamount: 'disbursementAmount',
+				cashbankdeviation: 'cashBankDeviation',
+				remark: 'remark',
 			};
-			const updatedRow = headers.map((header, index) => index === 0
-				? sheet.getRange(targetRow, 1).getValue()
-				: valuesByHeader[String(header).toLowerCase()] ?? '');
-			sheet.getRange(targetRow, 1, 1, updatedRow.length).setValues([updatedRow]);
+			const editedValues = data.values || {};
+			let updatedCellCount = 0;
+			headers.forEach((header, index) => {
+				if (index === 0) return;
+				const normalizedHeader = String(header).toLowerCase().replace(/[^a-z0-9]/g, '');
+				const valueKey = valuesByHeader[normalizedHeader];
+				if (!valueKey || !Object.prototype.hasOwnProperty.call(editedValues, valueKey)) return;
+				sheet.getRange(targetRow, index + 1).setValue(editedValues[valueKey]);
+				updatedCellCount += 1;
+			});
+			if (updatedCellCount === 0) throw new Error('No editable fields matched the selected row.');
 
 			return ContentService
-				.createTextOutput(JSON.stringify({ success: true, updated: true }))
+				.createTextOutput(JSON.stringify({ success: true, updated: true, updatedCellCount }))
 				.setMimeType(ContentService.MimeType.JSON);
 		}
 
