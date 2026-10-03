@@ -114,20 +114,20 @@ function parseDayMonthYear(value) {
 function formatReportDate(value) {
   const dateParts = parseDayMonthYear(value)
   if (!dateParts) return value ? String(value) : ''
-  return `${String(dateParts.day).padStart(2, '0')}/${String(dateParts.month).padStart(2, '0')}/${dateParts.year}`
+  return `${String(dateParts.month).padStart(2, '0')}/${String(dateParts.day).padStart(2, '0')}/${dateParts.year}`
 }
 
 function reportDateInput(value) {
   const dateParts = parseDayMonthYear(value)
   if (!dateParts) return value ? String(value).slice(0, 10) : ''
-  return `${dateParts.year}-${String(dateParts.month).padStart(2, '0')}-${String(dateParts.day).padStart(2, '0')}`
+  return `${dateParts.year}-${String(dateParts.day).padStart(2, '0')}-${String(dateParts.month).padStart(2, '0')}`
 }
 
 function dateForSpreadsheet(value) {
   if (!value) return ''
   const dateParts = parseDayMonthYear(value)
   if (!dateParts) return String(value)
-  return `${String(dateParts.day).padStart(2, '0')}/${String(dateParts.month).padStart(2, '0')}/${dateParts.year}`
+  return `${String(dateParts.month).padStart(2, '0')}/${String(dateParts.day).padStart(2, '0')}/${dateParts.year}`
 }
 
 function matchesDateFilter(value, filterValue) {
