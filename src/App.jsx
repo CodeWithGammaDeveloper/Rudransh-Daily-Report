@@ -83,16 +83,17 @@ function formatCurrency(value) {
 function formatReportDate(value) {
   if (!value) return ''
   const trimmed = String(value).trim()
-  const storedDate = trimmed.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/)
+
+  const storedDate = trimmed.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/)
   if (storedDate) {
     const day = String(Number(storedDate[1])).padStart(2, '0')
     const month = String(Number(storedDate[2])).padStart(2, '0')
-    return `${day}-${month}-${storedDate[3]}`
+    return `${day}/${month}/${storedDate[3]}`
   }
 
   const isoDate = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/)
   if (isoDate) {
-    return `${isoDate[3]}-${isoDate[2]}-${isoDate[1]}`
+    return `${isoDate[3]}/${isoDate[2]}/${isoDate[1]}`
   }
 
   const parsedDate = new Date(value)
@@ -100,13 +101,14 @@ function formatReportDate(value) {
   const day = String(parsedDate.getDate()).padStart(2, '0')
   const month = String(parsedDate.getMonth() + 1).padStart(2, '0')
   const year = parsedDate.getFullYear()
-  return `${day}-${month}-${year}`
+  return `${day}/${month}/${year}`
 }
 
 function reportDateInput(value) {
   if (!value) return ''
   const trimmed = String(value).trim()
-  const storedDate = trimmed.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/)
+
+  const storedDate = trimmed.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/)
   if (storedDate) {
     const day = String(Number(storedDate[1])).padStart(2, '0')
     const month = String(Number(storedDate[2])).padStart(2, '0')
@@ -128,7 +130,9 @@ function reportDateInput(value) {
 function dateForSpreadsheet(value) {
   if (!value) return ''
   const dateOnly = String(value).trim().match(/^(\d{4})-(\d{2})-(\d{2})$/)
-  if (dateOnly) return `${dateOnly[3]}-${dateOnly[2]}-${dateOnly[1]}`
+  if (dateOnly) return `${dateOnly[3]}/${dateOnly[2]}/${dateOnly[1]}`
+  const familiarDate = String(value).trim().match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/)
+  if (familiarDate) return `${Number(familiarDate[1]).toString().padStart(2, '0')}/${Number(familiarDate[2]).toString().padStart(2, '0')}/${familiarDate[3]}`
   return formatReportDate(value)
 }
 
