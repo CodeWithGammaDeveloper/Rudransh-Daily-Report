@@ -80,60 +80,54 @@ function formatCurrency(value) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value)
 }
 
-function formatReportDate(value) {
-  if (!value) return ''
+function parseDayMonthYear(value) {
+  if (!value) return null
   const trimmed = String(value).trim()
 
-  const storedDate = trimmed.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/)
-  if (storedDate) {
-    const day = String(Number(storedDate[1])).padStart(2, '0')
-    const month = String(Number(storedDate[2])).padStart(2, '0')
-    return `${day}/${month}/${storedDate[3]}`
+  const spreadsheetDate = trimmed.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/)
+  if (spreadsheetDate) {
+    return {
+      day: Number(spreadsheetDate[1]),
+      month: Number(spreadsheetDate[2]),
+      year: Number(spreadsheetDate[3]),
+    }
   }
 
   const isoDate = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/)
   if (isoDate) {
-    return `${isoDate[3]}/${isoDate[2]}/${isoDate[1]}`
+    return {
+      day: Number(isoDate[3]),
+      month: Number(isoDate[2]),
+      year: Number(isoDate[1]),
+    }
   }
 
-  const parsedDate = new Date(value)
-  if (Number.isNaN(parsedDate.getTime())) return String(value)
-  const day = String(parsedDate.getDate()).padStart(2, '0')
-  const month = String(parsedDate.getMonth() + 1).padStart(2, '0')
-  const year = parsedDate.getFullYear()
-  return `${day}/${month}/${year}`
+  const parsedDate = new Date(trimmed)
+  if (Number.isNaN(parsedDate.getTime())) return null
+  return {
+    day: parsedDate.getDate(),
+    month: parsedDate.getMonth() + 1,
+    year: parsedDate.getFullYear(),
+  }
+}
+
+function formatReportDate(value) {
+  const dateParts = parseDayMonthYear(value)
+  if (!dateParts) return value ? String(value) : ''
+  return `${String(dateParts.day).padStart(2, '0')}/${String(dateParts.month).padStart(2, '0')}/${dateParts.year}`
 }
 
 function reportDateInput(value) {
-  if (!value) return ''
-  const trimmed = String(value).trim()
-
-  const storedDate = trimmed.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/)
-  if (storedDate) {
-    const day = String(Number(storedDate[1])).padStart(2, '0')
-    const month = String(Number(storedDate[2])).padStart(2, '0')
-    return `${storedDate[3]}-${month}-${day}`
-  }
-
-  const dateOnly = trimmed.match(/^(\d{4}-\d{2}-\d{2})$/)
-  if (dateOnly) return dateOnly[1]
-
-  const parsedDate = new Date(value)
-  if (Number.isNaN(parsedDate.getTime())) return String(value).slice(0, 10)
-
-  const year = parsedDate.getFullYear()
-  const month = String(parsedDate.getMonth() + 1).padStart(2, '0')
-  const day = String(parsedDate.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+  const dateParts = parseDayMonthYear(value)
+  if (!dateParts) return value ? String(value).slice(0, 10) : ''
+  return `${dateParts.year}-${String(dateParts.month).padStart(2, '0')}-${String(dateParts.day).padStart(2, '0')}`
 }
 
 function dateForSpreadsheet(value) {
   if (!value) return ''
-  const dateOnly = String(value).trim().match(/^(\d{4})-(\d{2})-(\d{2})$/)
-  if (dateOnly) return `${dateOnly[3]}/${dateOnly[2]}/${dateOnly[1]}`
-  const familiarDate = String(value).trim().match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/)
-  if (familiarDate) return `${Number(familiarDate[1]).toString().padStart(2, '0')}/${Number(familiarDate[2]).toString().padStart(2, '0')}/${familiarDate[3]}`
-  return formatReportDate(value)
+  const dateParts = parseDayMonthYear(value)
+  if (!dateParts) return String(value)
+  return `${String(dateParts.day).padStart(2, '0')}/${String(dateParts.month).padStart(2, '0')}/${dateParts.year}`
 }
 
 function matchesDateFilter(value, filterValue) {
