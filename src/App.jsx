@@ -132,28 +132,14 @@ function dateForSpreadsheet(value) {
 
 function matchesDateFilter(value, filterValue) {
   if (!value || !filterValue) return false
-  const rawValue = String(value).trim()
-  const selectedDate = String(filterValue).slice(0, 10)
-  const dates = new Set()
 
-  const storedDate = rawValue.match(/^(\d{2})-(\d{2})-(\d{4})$/)
-  if (storedDate) dates.add(`${storedDate[3]}-${storedDate[2]}-${storedDate[1]}`)
+  const normalizedValue = parseDayMonthYear(value)
+  const normalizedFilter = parseDayMonthYear(filterValue)
+  if (!normalizedValue || !normalizedFilter) return false
 
-  const leadingDate = rawValue.match(/^(\d{4}-\d{2}-\d{2})/)
-  if (leadingDate) dates.add(leadingDate[1])
-
-  const parsedDate = new Date(rawValue)
-  if (!Number.isNaN(parsedDate.getTime())) {
-    dates.add(parsedDate.toISOString().slice(0, 10))
-    dates.add(new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Asia/Kolkata',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).format(parsedDate))
-  }
-
-  return dates.has(selectedDate)
+  return normalizedValue.year === normalizedFilter.year
+    && normalizedValue.month === normalizedFilter.month
+    && normalizedValue.day === normalizedFilter.day
 }
 
 function App() {
