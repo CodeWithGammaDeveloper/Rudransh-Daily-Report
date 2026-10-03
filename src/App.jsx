@@ -82,24 +82,47 @@ function formatCurrency(value) {
 
 function formatReportDate(value) {
   if (!value) return ''
-  const storedDate = String(value).trim().match(/^(\d{2})-(\d{2})-(\d{4})$/)
-  if (storedDate) return `${storedDate[1]}-${storedDate[2]}-${storedDate[3]}`
+  const trimmed = String(value).trim()
+  const storedDate = trimmed.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/)
+  if (storedDate) {
+    const day = String(Number(storedDate[1])).padStart(2, '0')
+    const month = String(Number(storedDate[2])).padStart(2, '0')
+    return `${day}-${month}-${storedDate[3]}`
+  }
+
+  const isoDate = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (isoDate) {
+    return `${isoDate[3]}-${isoDate[2]}-${isoDate[1]}`
+  }
+
   const parsedDate = new Date(value)
   if (Number.isNaN(parsedDate.getTime())) return String(value)
-  const day = String(parsedDate.getUTCDate()).padStart(2, '0')
-  const month = String(parsedDate.getUTCMonth() + 1).padStart(2, '0')
-  const year = parsedDate.getUTCFullYear()
+  const day = String(parsedDate.getDate()).padStart(2, '0')
+  const month = String(parsedDate.getMonth() + 1).padStart(2, '0')
+  const year = parsedDate.getFullYear()
   return `${day}-${month}-${year}`
 }
 
 function reportDateInput(value) {
   if (!value) return ''
-  const storedDate = String(value).trim().match(/^(\d{2})-(\d{2})-(\d{4})$/)
-  if (storedDate) return `${storedDate[3]}-${storedDate[2]}-${storedDate[1]}`
-  const dateOnly = String(value).trim().match(/^(\d{4}-\d{2}-\d{2})$/)
+  const trimmed = String(value).trim()
+  const storedDate = trimmed.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/)
+  if (storedDate) {
+    const day = String(Number(storedDate[1])).padStart(2, '0')
+    const month = String(Number(storedDate[2])).padStart(2, '0')
+    return `${storedDate[3]}-${month}-${day}`
+  }
+
+  const dateOnly = trimmed.match(/^(\d{4}-\d{2}-\d{2})$/)
   if (dateOnly) return dateOnly[1]
+
   const parsedDate = new Date(value)
-  return Number.isNaN(parsedDate.getTime()) ? String(value).slice(0, 10) : parsedDate.toISOString().slice(0, 10)
+  if (Number.isNaN(parsedDate.getTime())) return String(value).slice(0, 10)
+
+  const year = parsedDate.getFullYear()
+  const month = String(parsedDate.getMonth() + 1).padStart(2, '0')
+  const day = String(parsedDate.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 function dateForSpreadsheet(value) {
