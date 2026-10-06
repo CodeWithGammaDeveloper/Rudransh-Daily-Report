@@ -142,6 +142,20 @@ function matchesDateFilter(value, filterValue) {
     && normalizedValue.day === normalizedFilter.day
 }
 
+function matchesDateRangeFilter(value, range) {
+  const reportDate = parseDayMonthYear(value)
+  if (!reportDate) return false
+
+  const fromDate = range.from ? parseDayMonthYear(range.from) : null
+  const toDate = range.to ? parseDayMonthYear(range.to) : null
+  const reportDay = Date.UTC(reportDate.year, reportDate.month - 1, reportDate.day)
+  const fromDay = fromDate ? Date.UTC(fromDate.year, fromDate.month - 1, fromDate.day) : null
+  const toDay = toDate ? Date.UTC(toDate.year, toDate.month - 1, toDate.day) : null
+
+  return (fromDay === null || reportDay >= fromDay)
+    && (toDay === null || reportDay <= toDay)
+}
+
 function App() {
   const [username, setUsername] = useState('')
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -309,17 +323,24 @@ function AdminPortal({ username, reports, setReports, onLogout }) {
   const availableForms = Object.keys(ADMIN_FORM_SCHEMAS)
   const formSchema = selectedForm ? ADMIN_FORM_SCHEMAS[selectedForm] : []
   const filterFields = formSchema.filter((field) => field.key !== 'remark')
-  const hasAppliedFilter = Object.values(filters).some((value) => String(value).trim() !== '')
+  const hasAppliedFilter = Object.values(filters).some((value) => {
+    if (value && typeof value === 'object') return Object.values(value).some((entry) => String(entry).trim() !== '')
+    return String(value).trim() !== ''
+  })
 
   const visibleReports = reports.filter((report) => {
     if (!selectedForm || report.reportType !== selectedForm) return false
     return filterFields.every((field) => {
       const filterValue = filters[field.key] || ''
-      if (!filterValue) return true
       const reportValue = field.type === 'date'
         ? report[`${field.key}Value`] || report[field.key]
         : report[field.key]
-      if (field.type === 'date') return matchesDateFilter(reportValue, filterValue)
+      if (field.type === 'date') {
+        const dateRange = typeof filterValue === 'object' ? filterValue : { from: '', to: '' }
+        if (!dateRange.from && !dateRange.to) return true
+        return matchesDateRangeFilter(reportValue, dateRange)
+      }
+      if (!filterValue) return true
       return String(reportValue ?? '').toLowerCase().includes(filterValue.toLowerCase())
     })
   })
@@ -333,7 +354,18 @@ function AdminPortal({ username, reports, setReports, onLogout }) {
 
   function updateFilter(event) {
     const { name, value } = event.target
-    setFilters((current) => ({ ...current, [name]: value }))
+    const isDateRangeBound = name.endsWith('From') || name.endsWith('To')
+
+    setFilters((current) => {
+      if (!isDateRangeBound) return { ...current, [name]: value }
+
+      const fieldKey = name.replace(/(From|To)$/, '')
+      const range = current[fieldKey] && typeof current[fieldKey] === 'object'
+        ? { ...current[fieldKey] }
+        : { from: '', to: '' }
+      range[name.endsWith('From') ? 'from' : 'to'] = value
+      return { ...current, [fieldKey]: range }
+    })
   }
 
   async function deleteFilteredReports() {
@@ -406,7 +438,7 @@ function AdminPortal({ username, reports, setReports, onLogout }) {
       {selectedForm ? <>
         <section className="admin-filters">
           <div className="admin-filter-heading"><div><h2>Filter {selectedForm}</h2><p>Filter by any column except serial number and remark. Combine filters as needed.</p></div><button className="clear-filters" onClick={() => setFilters({})}>Clear filters</button></div>
-          <div className="admin-filter-grid">{filterFields.map((field) => <AdminSchemaField key={field.key} field={field} value={filters[field.key] || ''} onChange={updateFilter} filterMode />)}</div>
+          <div className="admin-filter-grid">{filterFields.map((field) => field.type === 'date' ? <div className="field admin-date-range-field" key={field.key}><span>Filter {field.label}</span><div className="admin-date-range-inputs"><label><span>From</span><input aria-label={`${field.label} from date`} name={`${field.key}From`} type="date" value={filters[field.key]?.from || ''} onChange={updateFilter} /></label><label><span>To</span><input aria-label={`${field.label} to date`} name={`${field.key}To`} type="date" value={filters[field.key]?.to || ''} onChange={updateFilter} /></label></div></div> : <AdminSchemaField key={field.key} field={field} value={filters[field.key] || ''} onChange={updateFilter} filterMode />)}</div>
         </section>
         {hasAppliedFilter ? <section className="admin-table-card">
           <div className="admin-table-toolbar"><span>{visibleReports.length} matching {selectedForm.toLowerCase()} entr{visibleReports.length === 1 ? 'y' : 'ies'}</span>{visibleReports.length > 0 && <button className="delete-filtered-button" onClick={deleteFilteredReports}><Trash2 size={15} /> Delete filtered data</button>}</div>

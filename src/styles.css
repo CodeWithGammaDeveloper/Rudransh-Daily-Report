@@ -88,6 +88,12 @@ body { background: #f6f7f8; }
 .clear-filters { border: 0; background: none; color: #8c6c22; font-size: 10px; padding: 4px; }
 .clear-filters:hover { text-decoration: underline; }
 .admin-filter-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.admin-date-range-field { min-width: 0; }
+.admin-date-range-inputs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.admin-date-range-inputs label { display: block; min-width: 0; }
+.admin-date-range-inputs label > span { display: block; margin-bottom: 6px; color: #8393a3; font-size: 10px; font-weight: 600; }
+.admin-date-range-inputs input { width: 100%; min-width: 0; border: 1px solid #dce4ea; border-radius: 6px; background: #fbfcfd; color: #39516c; padding: 9px 8px; font-size: 11px; outline: 0; }
+.admin-date-range-inputs input:focus { border-color: #bd9228; box-shadow: 0 0 0 3px #f6efd6; }
 .admin-table-card { overflow: hidden; }
 .admin-table-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 15px; border-bottom: 1px solid #edf1f4; color: #8b9aa8; font-size: 10px; }
 .delete-filtered-button { border: 1px solid #efc9c0; border-radius: 6px; background: #fff8f6; color: #b65f50; padding: 8px 10px; display: inline-flex; align-items: center; gap: 7px; font-size: 10px; font-weight: 700; }
@@ -130,6 +136,7 @@ body { background: #f6f7f8; }
 	.admin-heading h1 { font-size: 26px; }
 	.admin-filter-grid { grid-template-columns: 1fr; gap: 14px; }
 	.admin-filters { padding: 18px 16px; }
+	.admin-date-range-inputs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 	.admin-edit-grid { grid-template-columns: 1fr; }
 	.admin-edit-dialog { padding: 19px 16px; }
 }
