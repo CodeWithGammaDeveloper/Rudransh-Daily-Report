@@ -37,7 +37,7 @@ const initialReports = [
   { id: 4, executive: 'Meera Shah', customer: 'Arjun Rao', location: 'Faridabad', loanAmount: 710000, bank: 'SBI', loginDate: '23 Sep 2026', status: 'Reject', remark: 'Credit policy mismatch.', time: '02:10 PM' },
 ]
 
-const emptyReport = { executive: '', date: '2026-09-24', customer: '', companyName: '', netSalary: '', location: '', obligation: '', btFresh: '', loanAmount: '', bank: '', loginDate: '2026-09-24', loginStatus: '', remark: '', disbursementAmount: '', cashBankDeviation: '' }
+const emptyReport = { executive: '', date: '2026-09-24', customer: '', companyName: '', netSalary: '', emiAmount: '', currentOutstandingAmount: '', location: '', obligation: '', btFresh: '', loanAmount: '', bank: '', loginDate: '2026-09-24', loginStatus: '', remark: '', disbursementAmount: '', cashBankDeviation: '' }
 const EMPLOYEE_EMAIL = 'sales@rudranshcapital.com'
 const EMPLOYEE_PASSWORD = '@rudransh26(?)'
 const ADMIN_EMAIL = 'narsu.pawar@rudranshcapital.com'
@@ -49,6 +49,8 @@ const ADMIN_FORM_SCHEMAS = {
     { key: 'customer', label: 'Customer Name' },
     { key: 'companyName', label: 'Company Name' },
     { key: 'netSalary', label: 'Net Salary', type: 'number' },
+    { key: 'emiAmount', label: 'EMI Amount', type: 'number' },
+    { key: 'currentOutstandingAmount', label: 'Current Outstanding Amount', type: 'number' },
     { key: 'location', label: 'Location' },
     { key: 'obligation', label: 'Obligation', options: ['PL/BL', 'HL', 'CC', 'APP LOAN', 'AUTO LOAN', 'OTHERS'] },
     { key: 'btFresh', label: 'BT/FRESH', options: ['BT', 'FRESH'] },
@@ -218,6 +220,8 @@ function App() {
       location: form.location,
       companyName: form.companyName,
       netSalary: form.netSalary ? Number(form.netSalary) : '',
+      emiAmount: form.emiAmount ? Number(form.emiAmount) : '',
+      currentOutstandingAmount: form.currentOutstandingAmount ? Number(form.currentOutstandingAmount) : '',
       obligation: form.obligation,
       btFresh: form.btFresh,
       loanAmount: form.loanAmount ? Number(form.loanAmount) : '',
@@ -270,6 +274,8 @@ function normalizeSheetReport(report) {
     location: report.Location || '',
     companyName: report['Company Name'] || '',
     netSalary: Number(report['Net Salary'] || 0),
+    emiAmount: report['EMI Amount'] === '' || report['EMI Amount'] == null ? '' : Number(report['EMI Amount']),
+    currentOutstandingAmount: report['Current Outstanding Amount'] === '' || report['Current Outstanding Amount'] == null ? '' : Number(report['Current Outstanding Amount']),
     obligation: report.Obligation || '',
     btFresh: report['BT/FRESH'] || '',
     loanAmount: Number(report['Loan Amount'] || 0),
@@ -499,6 +505,8 @@ function ReportForm({ form, formType, setFormType, username, onChange, onSubmit 
             {formType === 'Leads Form' && <>
               <Field label="Company name" name="companyName" value={form.companyName} onChange={onChange} placeholder="Enter company name" required />
               <Field label="Net salary" name="netSalary" type="number" value={form.netSalary} onChange={onChange} placeholder="Enter net salary" required />
+              <Field label="EMI amount" name="emiAmount" type="number" value={form.emiAmount} onChange={onChange} placeholder="Enter EMI amount" />
+              <Field label="Current outstanding amount" name="currentOutstandingAmount" type="number" value={form.currentOutstandingAmount} onChange={onChange} placeholder="Enter current outstanding amount" />
               <Field label="Location" name="location" value={form.location} onChange={onChange} placeholder="City or area" required />
               <label className="field"><span>Obligation<b>*</b></span><select name="obligation" value={form.obligation} onChange={onChange} required><option value="">Select obligation</option><option>PL/BL</option><option>HL</option><option>CC</option><option>APP LOAN</option><option>AUTO LOAN</option><option>OTHERS</option></select></label>
               <label className="field"><span>BT/FRESH<b>*</b></span><select name="btFresh" value={form.btFresh} onChange={onChange} required><option value="">Select type</option><option>BT</option><option>FRESH</option></select></label>
