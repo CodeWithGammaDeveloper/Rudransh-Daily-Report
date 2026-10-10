@@ -37,7 +37,7 @@ const initialReports = [
   { id: 4, executive: 'Meera Shah', customer: 'Arjun Rao', location: 'Faridabad', loanAmount: 710000, bank: 'SBI', loginDate: '23 Sep 2026', status: 'Reject', remark: 'Credit policy mismatch.', time: '02:10 PM' },
 ]
 
-const emptyReport = { executive: '', date: '2026-09-24', customer: '', companyName: '', netSalary: '', emiAmount: '', currentOutstandingAmount: '', location: '', obligation: '', btFresh: '', loanAmount: '', bank: '', loginDate: '2026-09-24', loginStatus: '', remark: '', disbursementAmount: '', cashBankDeviation: '' }
+const emptyReport = { executive: '', date: '', customer: '', companyName: '', netSalary: '', emiAmount: '', currentOutstandingAmount: '', location: '', obligation: '', btFresh: '', loanAmount: '', bank: '', loginDate: '', loginStatus: '', remark: '', disbursementAmount: '', cashBankDeviation: '' }
 const EMPLOYEE_EMAIL = 'sales@rudranshcapital.com'
 const EMPLOYEE_PASSWORD = '@rudransh26(?)'
 const ADMIN_EMAIL = 'narsu.pawar@rudranshcapital.com'
@@ -505,7 +505,7 @@ function ReportForm({ form, formType, setFormType, username, onChange, onSubmit 
             <span className="required-note">* Required</span>
           </div>
           <div className="field-grid">
-            <Field label="Date" name="date" type="date" value={form.date} onChange={onChange} required />
+            <Field label="Date (DD/MM/YYYY)" name="date" type="date" value={form.date} onChange={onChange} required />
             <Field label="Customer name" name="customer" value={form.customer} onChange={onChange} placeholder="Enter customer name" required />
 
             {formType === 'Leads Form' && <>
@@ -523,7 +523,7 @@ function ReportForm({ form, formType, setFormType, username, onChange, onSubmit 
             {formType === 'Login Form' && <>
               <Field label="Loan amount" name="loanAmount" type="number" value={form.loanAmount} onChange={onChange} placeholder="Enter loan amount" required />
               <Field label="Bank" name="bank" value={form.bank} onChange={onChange} placeholder="Enter bank name" required />
-              <Field label="Login date" name="loginDate" type="date" value={form.loginDate} onChange={onChange} required />
+              <Field label="Login date (DD/MM/YYYY)" name="loginDate" type="date" value={form.loginDate} onChange={onChange} required />
               <label className="field"><span>Login status<b>*</b></span><select name="loginStatus" value={form.loginStatus} onChange={onChange} required><option value="">Select status</option><option>Yes</option><option>No</option></select></label>
             </>}
 
