@@ -122,7 +122,7 @@ function formatReportDate(value) {
 function formatAdminTableDate(value) {
   const dateParts = parseDayMonthYear(value)
   if (!dateParts) return value ? String(value) : '-'
-  return `${String(dateParts.month).padStart(2, '0')}/${String(dateParts.day).padStart(2, '0')}/${dateParts.year}`
+  return `${String(dateParts.day).padStart(2, '0')}/${String(dateParts.month).padStart(2, '0')}/${dateParts.year}`
 }
 
 function reportDateInput(value) {
