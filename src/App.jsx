@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowUpRight,
   BarChart3,
@@ -332,6 +332,23 @@ function AdminPortal({ username, reports, setReports, onLogout }) {
   const [editValues, setEditValues] = useState({})
   const [savingEdit, setSavingEdit] = useState(false)
   const [editMessage, setEditMessage] = useState('')
+
+  useEffect(() => {
+    let isMounted = true
+    const refreshReports = async () => {
+      const spreadsheetReports = await fetchReportsFromGoogleSheets()
+      if (isMounted && spreadsheetReports.length > 0) {
+        setReports(spreadsheetReports.map(normalizeSheetReport))
+      }
+    }
+    const intervalId = window.setInterval(refreshReports, 5000)
+
+    return () => {
+      isMounted = false
+      window.clearInterval(intervalId)
+    }
+  }, [setReports])
+
   const availableForms = Object.keys(ADMIN_FORM_SCHEMAS)
   const formSchema = selectedForm ? ADMIN_FORM_SCHEMAS[selectedForm] : []
   const filterFields = formSchema.filter((field) => field.key !== 'remark')
