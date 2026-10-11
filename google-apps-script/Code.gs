@@ -78,8 +78,12 @@ function doPost(e) {
 				executivename: 'executive',
 				date: 'date',
 				customername: 'customer',
+				phoneno: 'phone',
+				phonenumber: 'phone',
 				companyname: 'companyName',
 				netsalary: 'netSalary',
+				emiamount: 'emiAmount',
+				currentoutstandingamount: 'currentOutstandingAmount',
 				location: 'location',
 				obligation: 'obligation',
 				btfresh: 'btFresh',
@@ -120,9 +124,9 @@ function doPost(e) {
 		if (!sheet) sheet = spreadsheet.insertSheet(tabName);
 
 		const headersByForm = {
-			'Leads Form': ['S.No.', 'Executive Name', 'Date', 'Customer Name', 'Company Name', 'Net Salary', 'Location', 'Obligation', 'BT/FRESH', 'Loan Amount', 'Login Bank', 'Remark'],
-			'Login Form': ['S.No.', 'Executive Name', 'Date', 'Customer Name', 'Loan Amount', 'Bank', 'Login Date', 'Login Status', 'Remark'],
-			'Disbursement Form': ['S.No.', 'Executive Name', 'Date', 'Customer Name', 'Disbursement Amount', 'Bank', 'Cash/Bank Deviation'],
+			'Leads Form': ['S.No.', 'Executive Name', 'Date', 'Customer Name', 'Company Name', 'Net Salary', 'Location', 'Obligation', 'BT/FRESH', 'Loan Amount', 'Login Bank', 'Remark', 'EMI Amount', 'Current Outstanding Amount', 'Phone No.'],
+			'Login Form': ['S.No.', 'Executive Name', 'Date', 'Customer Name', 'Loan Amount', 'Bank', 'Login Date', 'Login Status', 'Remark', 'Phone No.'],
+			'Disbursement Form': ['S.No.', 'Executive Name', 'Date', 'Customer Name', 'Disbursement Amount', 'Bank', 'Cash/Bank Deviation', 'Phone No.'],
 		};
 		const expectedHeaders = headersByForm[tabName];
 		sheet.getRange(1, 1, 1, expectedHeaders.length).setValues([expectedHeaders]);
@@ -144,8 +148,12 @@ function doPost(e) {
 			'executive name': data.executive || '',
 			'date': data.date || '',
 			'customer name': data.customer || '',
+			'phone no.': data.phone || '',
+			'phone number': data.phone || '',
 			'company name': data.companyName || '',
 			'net salary': data.netSalary || '',
+			'emi amount': data.emiAmount || '',
+			'current outstanding amount': data.currentOutstandingAmount || '',
 			'location': data.location || '',
 			'obligation': data.obligation || '',
 			'bt/fresh': data.btFresh || '',

@@ -37,7 +37,7 @@ const initialReports = [
   { id: 4, executive: 'Meera Shah', customer: 'Arjun Rao', location: 'Faridabad', loanAmount: 710000, bank: 'SBI', loginDate: '23 Sep 2026', status: 'Reject', remark: 'Credit policy mismatch.', time: '02:10 PM' },
 ]
 
-const emptyReport = { executive: '', date: '', customer: '', companyName: '', netSalary: '', emiAmount: '', currentOutstandingAmount: '', location: '', obligation: '', btFresh: '', loanAmount: '', bank: '', loginDate: '', loginStatus: '', remark: '', disbursementAmount: '', cashBankDeviation: '' }
+const emptyReport = { executive: '', date: '', customer: '', phone: '', companyName: '', netSalary: '', emiAmount: '', currentOutstandingAmount: '', location: '', obligation: '', btFresh: '', loanAmount: '', bank: '', loginDate: '', loginStatus: '', remark: '', disbursementAmount: '', cashBankDeviation: '' }
 const EMPLOYEE_EMAIL = 'sales@rudranshcapital.com'
 const EMPLOYEE_PASSWORD = '@rudransh26(?)'
 const ADMIN_EMAIL = 'narsu.pawar@rudranshcapital.com'
@@ -47,6 +47,7 @@ const ADMIN_FORM_SCHEMAS = {
     { key: 'executive', label: 'Executive Name' },
     { key: 'date', label: 'Date', type: 'date' },
     { key: 'customer', label: 'Customer Name' },
+    { key: 'phone', label: 'Phone No.' },
     { key: 'companyName', label: 'Company Name' },
     { key: 'netSalary', label: 'Net Salary', type: 'number' },
     { key: 'emiAmount', label: 'EMI Amount', type: 'number' },
@@ -62,6 +63,7 @@ const ADMIN_FORM_SCHEMAS = {
     { key: 'executive', label: 'Executive Name' },
     { key: 'date', label: 'Date', type: 'date' },
     { key: 'customer', label: 'Customer Name' },
+    { key: 'phone', label: 'Phone No.' },
     { key: 'loanAmount', label: 'Loan Amount', type: 'number' },
     { key: 'bank', label: 'Bank' },
     { key: 'loginDate', label: 'Login Date', type: 'date' },
@@ -72,6 +74,7 @@ const ADMIN_FORM_SCHEMAS = {
     { key: 'executive', label: 'Executive Name' },
     { key: 'date', label: 'Date', type: 'date' },
     { key: 'customer', label: 'Customer Name' },
+    { key: 'phone', label: 'Phone No.' },
     { key: 'disbursementAmount', label: 'Disbursement Amount', type: 'number' },
     { key: 'bank', label: 'Bank' },
     { key: 'cashBankDeviation', label: 'Cash/Bank Deviation', options: ['Cash', 'Bank Deviation'] },
@@ -212,7 +215,8 @@ function App() {
 
   function handleChange(event) {
     const { name, value } = event.target
-    setForm((current) => ({ ...current, [name]: value }))
+    const nextValue = name === 'phone' ? value.replace(/\D/g, '').slice(0, 15) : value
+    setForm((current) => ({ ...current, [name]: nextValue }))
   }
 
   function submitReport(event) {
@@ -223,6 +227,7 @@ function App() {
       executive: form.executive,
       date: dateForSpreadsheet(form.date),
       customer: form.customer,
+      phone: form.phone,
       location: form.location,
       companyName: form.companyName,
       netSalary: form.netSalary ? Number(form.netSalary) : '',
@@ -277,6 +282,7 @@ function normalizeSheetReport(report) {
     date: formatReportDate(dateRaw),
     dateValue: reportDateInput(dateRaw),
     customer: report['Customer Name'] || report.Customer || '',
+    phone: String(report['Phone No.'] || report['Phone Number'] || report.Phone || ''),
     location: report.Location || '',
     companyName: report['Company Name'] || '',
     netSalary: Number(report['Net Salary'] || 0),
@@ -485,6 +491,12 @@ function Field({ label, type = 'text', placeholder, required, value, onChange, n
   return <label className="field"><span>{label}{required && <b>*</b>}</span><input name={name} type={type} placeholder={placeholder} required={required} value={value} onChange={onChange} /></label>
 }
 
+function PhoneField({ value, onChange }) {
+  const maskedValue = value ? `${'*'.repeat(Math.max(0, value.length - 4))}${value.slice(-4)}` : ''
+
+  return <label className="field"><span>Phone no.</span><span className="phone-entry-control"><input name="phone" type="password" inputMode="numeric" autoComplete="off" maxLength="15" placeholder="Enter phone number" value={value} onChange={onChange} /><span className={maskedValue ? 'phone-entry-mask' : 'phone-entry-mask placeholder'} aria-hidden="true">{maskedValue || 'Enter phone number'}</span></span></label>
+}
+
 function AdminSchemaField({ field, value, onChange, filterMode = false }) {
   const fieldLabel = filterMode ? `Filter ${field.label}` : field.label
   const placeholder = filterMode ? `Filter by ${field.label.toLowerCase()}` : `Enter ${field.label.toLowerCase()}`
@@ -524,6 +536,7 @@ function ReportForm({ form, formType, setFormType, username, onChange, onSubmit 
           <div className="field-grid">
             <Field label="Date (DD/MM/YYYY)" name="date" type="date" value={form.date} onChange={onChange} required />
             <Field label="Customer name" name="customer" value={form.customer} onChange={onChange} placeholder="Enter customer name" required />
+            <PhoneField value={form.phone} onChange={onChange} />
 
             {formType === 'Leads Form' && <>
               <Field label="Company name" name="companyName" value={form.companyName} onChange={onChange} placeholder="Enter company name" required />
