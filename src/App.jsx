@@ -47,7 +47,7 @@ const ADMIN_FORM_SCHEMAS = {
     { key: 'executive', label: 'Executive Name' },
     { key: 'date', label: 'Date', type: 'date' },
     { key: 'customer', label: 'Customer Name' },
-    { key: 'phone', label: 'Phone No.' },
+    { key: 'phone', label: 'Contact No.' },
     { key: 'companyName', label: 'Company Name' },
     { key: 'netSalary', label: 'Net Salary', type: 'number' },
     { key: 'emiAmount', label: 'EMI Amount', type: 'number' },
@@ -63,7 +63,7 @@ const ADMIN_FORM_SCHEMAS = {
     { key: 'executive', label: 'Executive Name' },
     { key: 'date', label: 'Date', type: 'date' },
     { key: 'customer', label: 'Customer Name' },
-    { key: 'phone', label: 'Phone No.' },
+    { key: 'phone', label: 'Contact No.' },
     { key: 'loanAmount', label: 'Loan Amount', type: 'number' },
     { key: 'bank', label: 'Bank' },
     { key: 'loginDate', label: 'Login Date', type: 'date' },
@@ -74,7 +74,7 @@ const ADMIN_FORM_SCHEMAS = {
     { key: 'executive', label: 'Executive Name' },
     { key: 'date', label: 'Date', type: 'date' },
     { key: 'customer', label: 'Customer Name' },
-    { key: 'phone', label: 'Phone No.' },
+    { key: 'phone', label: 'Contact No.' },
     { key: 'disbursementAmount', label: 'Disbursement Amount', type: 'number' },
     { key: 'bank', label: 'Bank' },
     { key: 'cashBankDeviation', label: 'Cash/Bank Deviation', options: ['Cash', 'Bank Deviation'] },
@@ -215,7 +215,7 @@ function App() {
 
   function handleChange(event) {
     const { name, value } = event.target
-    const nextValue = name === 'phone' ? value.replace(/\D/g, '').slice(0, 15) : value
+    const nextValue = name === 'phone' ? value.replace(/\D/g, '').slice(0, 10) : value
     setForm((current) => ({ ...current, [name]: nextValue }))
   }
 
@@ -282,7 +282,7 @@ function normalizeSheetReport(report) {
     date: formatReportDate(dateRaw),
     dateValue: reportDateInput(dateRaw),
     customer: report['Customer Name'] || report.Customer || '',
-    phone: String(report['Phone No.'] || report['Phone Number'] || report.Phone || ''),
+    phone: String(report['Contact No.'] || report['Phone No.'] || report['Phone Number'] || report.Phone || ''),
     location: report.Location || '',
     companyName: report['Company Name'] || '',
     netSalary: Number(report['Net Salary'] || 0),
@@ -492,9 +492,9 @@ function Field({ label, type = 'text', placeholder, required, value, onChange, n
 }
 
 function PhoneField({ value, onChange }) {
-  const maskedValue = value ? `${'*'.repeat(Math.max(0, value.length - 4))}${value.slice(-4)}` : ''
+  const maskedValue = value ? `${'•'.repeat(Math.max(0, value.length - 4))}${value.slice(-4)}` : ''
 
-  return <label className="field"><span>Phone no.</span><span className="phone-entry-control"><input name="phone" type="password" inputMode="numeric" autoComplete="off" maxLength="15" placeholder="Enter phone number" value={value} onChange={onChange} /><span className={maskedValue ? 'phone-entry-mask' : 'phone-entry-mask placeholder'} aria-hidden="true">{maskedValue || 'Enter phone number'}</span></span></label>
+  return <label className="field"><span>Contact No.</span><span className="phone-entry-control"><input name="phone" type="password" inputMode="numeric" autoComplete="off" maxLength="10" pattern="[0-9]{10}" title="Enter exactly 10 digits" placeholder="Enter 10-digit contact number" value={value} onChange={onChange} /><span className={maskedValue ? 'phone-entry-mask' : 'phone-entry-mask placeholder'} aria-hidden="true">{maskedValue || 'Enter 10-digit contact number'}</span></span></label>
 }
 
 function AdminSchemaField({ field, value, onChange, filterMode = false }) {
