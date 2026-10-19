@@ -46,6 +46,7 @@ body { background: #f6f7f8; }
 .step-number { color: #a17616; background: #f6efd6; }
 .field input:focus, .field select:focus, .field textarea:focus { border-color: #bd9228; box-shadow: 0 0 0 3px #f6efd6; }
 .phone-entry-control { position: relative; display: block; }
+.phone-entry-control.is-complete input { color: transparent; -webkit-text-fill-color: transparent; }
 .phone-entry-mask { position: absolute; inset: 0; display: flex; align-items: center; padding: 11px 12px; color: #39564d; font-size: 12px; pointer-events: none; }
 .mobile-brand { margin-bottom: 24px; }
 .mobile-brand .company-logo { width: 210px; }
