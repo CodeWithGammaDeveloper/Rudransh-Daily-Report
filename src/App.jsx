@@ -194,10 +194,16 @@ function App() {
     volume: reports.reduce((sum, report) => sum + Number(report.loanAmount), 0),
   }), [reports])
 
-  function handleLogin(enteredUsername) {
+  async function handleLogin(enteredUsername) {
     setIsLoggedIn(true)
     setUsername(enteredUsername)
     setForm((current) => ({ ...current, executive: enteredUsername }))
+    const spreadsheetReports = await fetchReportsFromGoogleSheets()
+    if (spreadsheetReports.length > 0) {
+      const normalizedReports = spreadsheetReports.map(normalizeSheetReport)
+      setReports(normalizedReports)
+      localStorage.setItem('rudransh-reports', JSON.stringify(normalizedReports))
+    }
   }
 
   async function handleAdminLogin(enteredUsername) {
@@ -268,7 +274,7 @@ function App() {
       </div>
     </header>
     {notice && <div className="toast"><span className="toast-check"><Check size={15} /></span>{notice}<button onClick={() => setNotice('')} aria-label="Dismiss"><X size={15} /></button></div>}
-    <main className="report-main"><ReportForm form={form} formType={formType} setFormType={setFormType} username={username} onChange={handleChange} onSubmit={submitReport} /></main>
+    <main className="report-main"><ReportForm form={form} formType={formType} setFormType={setFormType} username={username} reports={reports} onChange={handleChange} onSubmit={submitReport} /></main>
   </div>
 }
 
@@ -566,8 +572,24 @@ function getInitials(name) {
   return name.split(' ').map((word) => word[0]).join('').slice(0, 2).toUpperCase()
 }
 
-function ReportForm({ form, formType, setFormType, username, onChange, onSubmit }) {
+function ReportForm({ form, formType, setFormType, username, reports, onChange, onSubmit }) {
+  const [showMyReports, setShowMyReports] = useState(false)
   const formTabs = ['Leads Form', 'Login Form', 'Disbursement Form']
+  const reportSchema = ADMIN_FORM_SCHEMAS[formType]
+  const employeeReports = reports.filter((report) => (report.reportType || report.formType) === formType
+    && String(report.executive || '').trim().toLowerCase() === username.trim().toLowerCase())
+
+  function renderReportValue(report, field) {
+    const value = report[field.key]
+    if (value === '' || value == null) return '-'
+    if (field.key === 'phone') {
+      const digits = String(value).replace(/\D/g, '')
+      return digits.length === 10 ? `${'•'.repeat(6)}${digits.slice(-4)}` : String(value)
+    }
+    if (field.type === 'number') return formatCurrency(value)
+    if (field.type === 'date') return formatAdminTableDate(value)
+    return value
+  }
 
   return (
     <>
@@ -581,10 +603,14 @@ function ReportForm({ form, formType, setFormType, username, onChange, onSubmit 
       </section>
       <div className="report-form-tabs" role="tablist" aria-label="Report form type">
         {formTabs.map((tab) => (
-          <button key={tab} type="button" role="tab" aria-selected={formType === tab} className={formType === tab ? 'report-form-tab active' : 'report-form-tab'} onClick={() => setFormType(tab)}>{tab}</button>
+          <button key={tab} type="button" role="tab" aria-selected={formType === tab} className={formType === tab ? 'report-form-tab active' : 'report-form-tab'} onClick={() => { setFormType(tab); setShowMyReports(false) }}>{tab}</button>
         ))}
       </div>
-      <form className="report-form" onSubmit={onSubmit}>
+      <div className="employee-report-toolbar"><span>{showMyReports ? `${employeeReports.length} ${formType.toLowerCase()} reports` : `Enter ${formType.toLowerCase()} details`}</span><button type="button" className="secondary-button" onClick={() => setShowMyReports((visible) => !visible)}>{showMyReports ? `Back to ${formType}` : 'My Reports'}</button></div>
+      {showMyReports ? <section className="admin-table-card employee-report-table">
+        {employeeReports.length > 0 ? <div className="admin-table-wrap"><table><thead><tr>{reportSchema.map((field) => <th key={field.key}>{field.label}</th>)}</tr></thead><tbody>{employeeReports.map((report) => <tr key={report.id}>{reportSchema.map((field) => <td key={field.key} className={field.key === 'remark' ? 'remark-cell' : ''}>{renderReportValue(report, field)}</td>)}</tr>)}</tbody></table></div> : <div className="empty-state">No {formType.toLowerCase()} reports yet.</div>}
+        <div className="admin-table-footer">Showing {employeeReports.length} of {employeeReports.length} {formType.toLowerCase()} reports</div>
+      </section> : <form className="report-form" onSubmit={onSubmit}>
         <div className="form-card">
           <div className="form-card-heading">
             <div><span className="step-number">{formTabs.indexOf(formType) + 1}</span><div><h2>{formType}</h2><p>Executive: {username}</p></div></div>
@@ -623,7 +649,7 @@ function ReportForm({ form, formType, setFormType, username, onChange, onSubmit 
           {(formType === 'Leads Form' || formType === 'Login Form') && <label className="field report-remark-field"><span>Remark</span><textarea name="remark" value={form.remark} onChange={onChange} placeholder="Add notes" rows="3" /></label>}
         </div>
         <div className="form-actions"><button type="submit" className="primary-button"><Check size={18} /> Submit {formType}</button></div>
-      </form>
+      </form>}
     </>
   )
 }

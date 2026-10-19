@@ -74,6 +74,10 @@ body { background: #f6f7f8; }
 .report-form-tab { border: 1px solid #dce4ea; border-radius: 7px; background: #fff; color: #587087; padding: 12px 10px; font-size: 12px; font-weight: 700; }
 .report-form-tab:hover { border-color: #c6a03b; color: #294667; }
 .report-form-tab.active { border-color: #173b63; background: #173b63; color: #fff; }
+.employee-report-toolbar { width: min(920px, calc(100% - 40px)); margin: 0 auto 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #8b9aa8; font-size: 11px; }
+.employee-report-table { width: min(920px, calc(100% - 40px)); margin: 0 auto; }
+.employee-report-table table { min-width: 1050px; }
+.employee-report-table th, .employee-report-table td { white-space: nowrap; }
 .report-remark-field { margin-top: 18px; }
 .admin-workspace { min-height: 100vh; background: #f6f7f8; color: #22344d; }
 .admin-main { width: min(1440px, calc(100% - 70px)); margin: 0 auto; padding: 48px 0 65px; }
