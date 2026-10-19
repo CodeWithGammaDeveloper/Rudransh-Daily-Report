@@ -78,6 +78,8 @@ body { background: #f6f7f8; }
 .employee-report-table { width: min(920px, calc(100% - 40px)); margin: 0 auto; }
 .employee-report-table table { min-width: 1050px; }
 .employee-report-table th, .employee-report-table td { white-space: nowrap; }
+.employee-report-filters { margin: 0; padding: 16px; border: 0; border-bottom: 1px solid #edf1f4; border-radius: 0; box-shadow: none; }
+.employee-report-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .report-remark-field { margin-top: 18px; }
 .admin-workspace { min-height: 100vh; background: #f6f7f8; color: #22344d; }
 .admin-main { width: min(1440px, calc(100% - 70px)); margin: 0 auto; padding: 48px 0 65px; }

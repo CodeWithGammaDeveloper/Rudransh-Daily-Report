@@ -574,10 +574,18 @@ function getInitials(name) {
 
 function ReportForm({ form, formType, setFormType, username, reports, onChange, onSubmit }) {
   const [showMyReports, setShowMyReports] = useState(false)
+  const [reportFilters, setReportFilters] = useState({ from: '', to: '', customer: '' })
   const formTabs = ['Leads Form', 'Login Form', 'Disbursement Form']
   const reportSchema = ADMIN_FORM_SCHEMAS[formType]
   const employeeReports = reports.filter((report) => (report.reportType || report.formType) === formType
     && String(report.executive || '').trim().toLowerCase() === username.trim().toLowerCase())
+  const filteredEmployeeReports = employeeReports.filter((report) => {
+    const dateMatches = !reportFilters.from && !reportFilters.to
+      || matchesDateRangeFilter(report.dateValue || report.date, { from: reportFilters.from, to: reportFilters.to })
+    const customerMatches = !reportFilters.customer
+      || String(report.customer || '').toLowerCase().includes(reportFilters.customer.toLowerCase())
+    return dateMatches && customerMatches
+  })
 
   function renderReportValue(report, field) {
     const value = report[field.key]
@@ -606,10 +614,14 @@ function ReportForm({ form, formType, setFormType, username, reports, onChange, 
           <button key={tab} type="button" role="tab" aria-selected={formType === tab} className={formType === tab ? 'report-form-tab active' : 'report-form-tab'} onClick={() => { setFormType(tab); setShowMyReports(false) }}>{tab}</button>
         ))}
       </div>
-      <div className="employee-report-toolbar"><span>{showMyReports ? `${employeeReports.length} ${formType.toLowerCase()} reports` : `Enter ${formType.toLowerCase()} details`}</span><button type="button" className="secondary-button" onClick={() => setShowMyReports((visible) => !visible)}>{showMyReports ? `Back to ${formType}` : 'My Reports'}</button></div>
+      <div className="employee-report-toolbar"><span>{showMyReports ? `${filteredEmployeeReports.length} of ${employeeReports.length} ${formType.toLowerCase()} reports` : `Enter ${formType.toLowerCase()} details`}</span><button type="button" className="secondary-button" onClick={() => setShowMyReports((visible) => !visible)}>{showMyReports ? `Back to ${formType}` : 'My Reports'}</button></div>
       {showMyReports ? <section className="admin-table-card employee-report-table">
-        {employeeReports.length > 0 ? <div className="admin-table-wrap"><table><thead><tr>{reportSchema.map((field) => <th key={field.key}>{field.label}</th>)}</tr></thead><tbody>{employeeReports.map((report) => <tr key={report.id}>{reportSchema.map((field) => <td key={field.key} className={field.key === 'remark' ? 'remark-cell' : ''}>{renderReportValue(report, field)}</td>)}</tr>)}</tbody></table></div> : <div className="empty-state">No {formType.toLowerCase()} reports yet.</div>}
-        <div className="admin-table-footer">Showing {employeeReports.length} of {employeeReports.length} {formType.toLowerCase()} reports</div>
+        <section className="admin-filters employee-report-filters">
+          <div className="admin-filter-heading"><div><h2>Filter {formType}</h2><p>Combine date range and customer name filters.</p></div><button className="clear-filters" onClick={() => setReportFilters({ from: '', to: '', customer: '' })}>Clear filters</button></div>
+          <div className="admin-filter-grid employee-report-filter-grid"><div className="field admin-date-range-field"><span>Filter Date</span><div className="admin-date-range-inputs"><label><span>From</span><input aria-label="Report date from" type="date" value={reportFilters.from} onChange={(event) => setReportFilters((current) => ({ ...current, from: event.target.value }))} /></label><label><span>To</span><input aria-label="Report date to" type="date" value={reportFilters.to} onChange={(event) => setReportFilters((current) => ({ ...current, to: event.target.value }))} /></label></div></div><AdminSchemaField field={{ key: 'customer', label: 'Customer Name' }} value={reportFilters.customer} onChange={(event) => setReportFilters((current) => ({ ...current, customer: event.target.value }))} filterMode /></div>
+        </section>
+        {filteredEmployeeReports.length > 0 ? <div className="admin-table-wrap"><table><thead><tr>{reportSchema.map((field) => <th key={field.key}>{field.label}</th>)}</tr></thead><tbody>{filteredEmployeeReports.map((report) => <tr key={report.id}>{reportSchema.map((field) => <td key={field.key} className={field.key === 'remark' ? 'remark-cell' : ''}>{renderReportValue(report, field)}</td>)}</tr>)}</tbody></table></div> : <div className="empty-state">{employeeReports.length ? 'No reports match these filters.' : `No ${formType.toLowerCase()} reports yet.`}</div>}
+        <div className="admin-table-footer">Showing {filteredEmployeeReports.length} of {employeeReports.length} {formType.toLowerCase()} reports</div>
       </section> : <form className="report-form" onSubmit={onSubmit}>
         <div className="form-card">
           <div className="form-card-heading">
