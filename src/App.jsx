@@ -304,32 +304,88 @@ function normalizeSheetReport(report) {
 }
 
 function LoginScreen({ onLogin, onAdminLogin }) {
-  const [credentials, setCredentials] = useState({ username: '', email: '', password: '' })
+  const [credentials, setCredentials] = useState({ employeeId: '', username: '', email: '', password: '', confirmPassword: '' })
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [mode, setMode] = useState('employee')
+  const [mode, setMode] = useState('register')
 
   function updateCredentials(event) {
     const { name, value } = event.target
-    setCredentials((current) => ({ ...current, [name]: value }))
+    const nextValue = name === 'employeeId' ? value.replace(/\D/g, '').slice(0, 3) : value
+    setCredentials((current) => ({ ...current, [name]: nextValue }))
     setError('')
   }
 
-  function submit(event) {
-    event.preventDefault()
-    const expectedEmail = mode === 'admin' ? ADMIN_EMAIL : EMPLOYEE_EMAIL
-    const expectedPassword = mode === 'admin' ? ADMIN_PASSWORD : EMPLOYEE_PASSWORD
-    const emailMatches = credentials.email.trim().toLowerCase() === expectedEmail.toLowerCase()
-    const passwordMatches = credentials.password === expectedPassword
-    if (!credentials.username.trim() || !emailMatches || !passwordMatches) {
-      setError('Access denied. Email and password must match your assigned credentials.')
-      return
-    }
-    if (mode === 'admin') onAdminLogin(credentials.username.trim())
-    else onLogin(credentials.username.trim())
+  function switchMode(nextMode) {
+    setMode(nextMode)
+    setError('')
+    setCredentials({ employeeId: '', username: '', email: '', password: '', confirmPassword: '' })
   }
 
-  return <div className="login-page"><div className="login-visual"><div className="visual-brand"><img className="company-logo" src={logoSrc} alt="Rudransh Capital Advisory Services" /></div><div className="visual-copy"><p className="eyebrow">{mode === 'admin' ? 'ADMIN PORTAL' : 'EMPLOYEE ACCESS ONLY'}</p><h1>Every visit.<br /><em>One clear report.</em></h1><p>{mode === 'admin' ? 'Review employee activity and keep every case moving.' : 'Sign in to capture, track, and move every customer case forward.'}</p></div><div className="visual-footer"><span>Secure workspace</span><span>•</span><span>Pune, IN</span></div></div><div className="login-panel"><div className="login-form-wrap"><div className="mobile-brand"><img className="company-logo" src={logoSrc} alt="Rudransh Capital Advisory Services" /></div><p className="eyebrow">{mode === 'admin' ? 'ADMIN LOGIN' : 'EMPLOYEE LOGIN'}</p><h2>{mode === 'admin' ? 'Login to admin portal' : 'Login to your workspace'}</h2><p className="form-intro">Use your assigned {mode} credentials to continue.</p><form onSubmit={submit}><Field label="Username" name="username" value={credentials.username} onChange={updateCredentials} placeholder="Enter your name" required /><Field label="Work email" name="email" type="email" value={credentials.email} onChange={updateCredentials} placeholder={mode === 'admin' ? 'Narsu.pawar@rudranshcapital.com' : 'Sales@rudranshcapital.com'} required /><label className="field"><span>Password<b>*</b></span><span className="password-input"><input name="password" type={showPassword ? 'text' : 'password'} value={credentials.password} onChange={updateCredentials} placeholder="Enter your password" required /><button type="button" className="password-toggle" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? 'Hide password' : 'Show password'} title={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? <EyeOff size={16} /> : <Eye size={16} />}</button></span></label>{error && <p className="auth-error">Access denied. Check your credentials.</p>}<button className="primary-button full-button" type="submit">{mode === 'admin' ? 'Enter admin portal' : 'Login'} <ArrowUpRight size={17} /></button></form><div className="login-help">{mode === 'admin' ? 'Employee access?' : 'Administrator access?'} <button type="button" className="text-button" onClick={() => { setMode(mode === 'admin' ? 'employee' : 'admin'); setError(''); setCredentials({ username: '', email: '', password: '' }) }}>{mode === 'admin' ? 'Login as employee' : 'Open admin portal'}</button></div></div><span className="login-copyright">© 2026 Rudransh Capital Advisory Services</span></div></div>
+  async function passwordDigest(password) {
+    const bytes = new TextEncoder().encode(password)
+    const digest = await crypto.subtle.digest('SHA-256', bytes)
+    return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
+  }
+
+  async function submit(event) {
+    event.preventDefault()
+
+    if (mode === 'admin') {
+      const emailMatches = credentials.email.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase()
+      if (!credentials.username.trim() || !emailMatches || credentials.password !== ADMIN_PASSWORD) {
+        setError('Access denied. Check your admin credentials.')
+        return
+      }
+      onAdminLogin(credentials.username.trim())
+      return
+    }
+
+    if (!/^\d{3}$/.test(credentials.employeeId)) {
+      setError('Employee ID must be exactly 3 digits.')
+      return
+    }
+    if (!credentials.username.trim() || !credentials.password) {
+      setError('Enter your username and password.')
+      return
+    }
+
+    const accountKey = 'rudransh-employee-accounts'
+    const accounts = JSON.parse(localStorage.getItem(accountKey) || '[]')
+    const employeeId = credentials.employeeId
+    const username = credentials.username.trim()
+
+    if (mode === 'register') {
+      if (accounts.some((account) => account.employeeId === employeeId || account.username.toLowerCase() === username.toLowerCase())) {
+        setError('User already signed in, please go to login page.')
+        return
+      }
+      if (credentials.password !== credentials.confirmPassword) {
+        setError('Password and confirm password do not match.')
+        return
+      }
+
+      accounts.push({ employeeId, username, passwordDigest: await passwordDigest(credentials.password) })
+      localStorage.setItem(accountKey, JSON.stringify(accounts))
+      setError('Account created. Please log in.')
+      setMode('login')
+      setCredentials({ employeeId: '', username: '', email: '', password: '', confirmPassword: '' })
+      return
+    }
+
+    const account = accounts.find((entry) => entry.employeeId === employeeId && entry.username.toLowerCase() === username.toLowerCase())
+    if (!account || account.passwordDigest !== await passwordDigest(credentials.password)) {
+      setError('Access denied. Check your username, employee ID and password.')
+      return
+    }
+    onLogin(account.username)
+  }
+
+  const isAdmin = mode === 'admin'
+  const isRegistering = mode === 'register'
+  const pageTitle = isAdmin ? 'Login to admin portal' : isRegistering ? 'Create employee account' : 'Login to your workspace'
+
+  return <div className="login-page"><div className="login-visual"><div className="visual-brand"><img className="company-logo" src={logoSrc} alt="Rudransh Capital Advisory Services" /></div><div className="visual-copy"><p className="eyebrow">{isAdmin ? 'ADMIN PORTAL' : 'EMPLOYEE ACCESS ONLY'}</p><h1>Every visit.<br /><em>One clear report.</em></h1><p>{isAdmin ? 'Review employee activity and keep every case moving.' : 'Sign in to capture, track, and move every customer case forward.'}</p></div><div className="visual-footer"><span>Secure workspace</span><span>•</span><span>Pune, IN</span></div></div><div className="login-panel"><div className="login-form-wrap"><div className="mobile-brand"><img className="company-logo" src={logoSrc} alt="Rudransh Capital Advisory Services" /></div><p className="eyebrow">{isAdmin ? 'ADMIN LOGIN' : isRegistering ? 'EMPLOYEE SIGN UP' : 'EMPLOYEE LOGIN'}</p><h2>{pageTitle}</h2><p className="form-intro">{isAdmin ? 'Use your assigned administrator credentials.' : isRegistering ? 'Register with your 3-digit employee ID.' : 'Enter your employee account details.'}</p><form onSubmit={submit}>{isAdmin ? <><Field label="Username" name="username" value={credentials.username} onChange={updateCredentials} placeholder="Enter your name" required /><Field label="Work email" name="email" type="email" value={credentials.email} onChange={updateCredentials} placeholder="Narsu.pawar@rudranshcapital.com" required /></> : <><Field label="Employee ID" name="employeeId" type="text" value={credentials.employeeId} onChange={updateCredentials} placeholder="3-digit employee ID" required /><Field label="Username" name="username" value={credentials.username} onChange={updateCredentials} placeholder="Enter your username" required /></>}{!isRegistering && <label className="field"><span>Password<b>*</b></span><span className="password-input"><input name="password" type={showPassword ? 'text' : 'password'} value={credentials.password} onChange={updateCredentials} placeholder="Enter your password" required /><button type="button" className="password-toggle" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? 'Hide password' : 'Show password'} title={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? <EyeOff size={16} /> : <Eye size={16} />}</button></span></label>}{isRegistering && <><label className="field"><span>Password<b>*</b></span><input name="password" type={showPassword ? 'text' : 'password'} value={credentials.password} onChange={updateCredentials} placeholder="Create a password" required /></label><Field label="Confirm password" name="confirmPassword" type="password" value={credentials.confirmPassword} onChange={updateCredentials} placeholder="Re-enter your password" required /></>}{error && <p className={error.startsWith('Account created') ? 'auth-success' : 'auth-error'}>{error}</p>}<button className="primary-button full-button" type="submit">{isAdmin ? 'Enter admin portal' : isRegistering ? 'Create account' : 'Login'} <ArrowUpRight size={17} /></button></form><div className="login-help">{isAdmin ? 'Employee access?' : isRegistering ? 'Already registered?' : 'First time here?'} <button type="button" className="text-button" onClick={() => switchMode(isAdmin ? 'register' : isRegistering ? 'login' : 'register')}>{isAdmin ? 'Employee sign up' : isRegistering ? 'Go to login' : 'Create account'}</button></div>{!isAdmin && <div className="login-help">Administrator access? <button type="button" className="text-button" onClick={() => switchMode('admin')}>Open admin portal</button></div>}{isAdmin && <div className="login-help"><button type="button" className="text-button" onClick={() => switchMode('login')}>Login as employee</button></div>}</div><span className="login-copyright">© 2026 Rudransh Capital Advisory Services</span></div></div>
 }
 
 function AdminPortal({ username, reports, setReports, onLogout }) {

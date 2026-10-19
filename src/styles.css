@@ -51,6 +51,7 @@ body { background: #f6f7f8; }
 .mobile-brand { margin-bottom: 24px; }
 .mobile-brand .company-logo { width: 210px; }
 .auth-error { margin: -4px 0 0; color: #b85f50; background: #fbebe7; border: 1px solid #f1d0c8; border-radius: 6px; padding: 9px 10px; font-size: 10px; line-height: 1.4; }
+.auth-success { margin: -4px 0 0; color: #326d4d; background: #eaf5ed; border: 1px solid #cce5d2; border-radius: 6px; padding: 9px 10px; font-size: 10px; line-height: 1.4; }
 .password-input { position: relative; display: block; }
 .password-input input { padding-right: 40px; }
 .password-toggle { position: absolute; top: 50%; right: 9px; transform: translateY(-50%); border: 0; background: transparent; color: #718093; display: grid; place-items: center; padding: 4px; }
