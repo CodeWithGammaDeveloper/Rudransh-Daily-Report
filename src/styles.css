@@ -49,8 +49,8 @@ body { background: #f6f7f8; }
 .phone-entry-control input { color: transparent !important; -webkit-text-fill-color: transparent; caret-color: #39564d; }
 .phone-entry-mask { position: absolute; inset: 0; display: flex; align-items: center; padding: 11px 12px; color: #39564d; font-size: 12px; pointer-events: none; }
 .phone-entry-mask.placeholder { color: #b0bbb4; }
-.phone-entry-control.is-editing input { color: #39564d !important; -webkit-text-fill-color: #39564d; }
-.phone-entry-control.is-editing .phone-entry-mask { display: none; }
+.phone-entry-control:focus-within input { color: #39564d !important; -webkit-text-fill-color: #39564d !important; }
+.phone-entry-control:focus-within .phone-entry-mask { display: none; }
 .mobile-brand { margin-bottom: 24px; }
 .mobile-brand .company-logo { width: 210px; }
 .auth-error { margin: -4px 0 0; color: #b85f50; background: #fbebe7; border: 1px solid #f1d0c8; border-radius: 6px; padding: 9px 10px; font-size: 10px; line-height: 1.4; }
