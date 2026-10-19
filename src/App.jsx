@@ -493,7 +493,9 @@ function Field({ label, type = 'text', placeholder, required, value, onChange, n
 }
 
 function PhoneField({ value, onChange }) {
-  return <label className="field"><span>Contact No.</span><input name="phone" type="text" inputMode="numeric" autoComplete="off" maxLength="10" pattern="[0-9]{10}" title="Enter exactly 10 digits" placeholder="Enter 10-digit contact number" value={value} onChange={onChange} /></label>
+  const maskedValue = value.length === 10 ? `${'•'.repeat(6)}${value.slice(-4)}` : ''
+
+  return <label className="field"><span>Contact No.</span><span className="phone-entry-control"><input name="phone" type="text" inputMode="numeric" autoComplete="off" maxLength="10" pattern="[0-9]{10}" title="Enter exactly 10 digits" placeholder="Enter 10-digit contact number" value={value} onChange={onChange} />{maskedValue && <span className="phone-entry-mask" aria-hidden="true">{maskedValue}</span>}</span></label>
 }
 
 function AdminSchemaField({ field, value, onChange, filterMode = false }) {
