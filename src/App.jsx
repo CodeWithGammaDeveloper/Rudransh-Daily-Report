@@ -27,7 +27,7 @@ import {
   UsersRound,
   X,
 } from 'lucide-react'
-import { deleteReportsFromGoogleSheets, fetchReportsFromGoogleSheets, syncReportToGoogleSheets, updateReportInGoogleSheets } from './services/reportSync'
+import { deleteReportsFromGoogleSheets, fetchReportsFromGoogleSheets, fetchTeamReportsFromGoogleSheets, syncReportToGoogleSheets, updateReportInGoogleSheets } from './services/reportSync'
 import logoSrc from '../logo.png'
 
 const initialReports = [
@@ -42,6 +42,10 @@ const EMPLOYEE_EMAIL = 'sales@rudranshcapital.com'
 const EMPLOYEE_PASSWORD = '@rudransh26(?)'
 const ADMIN_EMAIL = 'narsu.pawar@rudranshcapital.com'
 const ADMIN_PASSWORD = '@admin_2026#'
+const TEAM_MEMBERS_BY_LEADER = {
+  '024': ['019', '018', '012', '008', '032', '009'],
+  '027': ['030', '028', '029', '031'],
+}
 const ADMIN_FORM_SCHEMAS = {
   'Leads Form': [
     { key: 'executive', label: 'Executive Name' },
@@ -169,8 +173,10 @@ function matchesDateRangeFilter(value, range) {
 
 function App() {
   const [username, setUsername] = useState('')
+  const [employeeId, setEmployeeId] = useState('')
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [portal, setPortal] = useState('employee')
+  const [teamMemberIds, setTeamMemberIds] = useState([])
   const [activePage, setActivePage] = useState('Overview')
   const [reports, setReports] = useState(() => {
     const savedReports = localStorage.getItem('rudransh-reports')
@@ -194,16 +200,34 @@ function App() {
     volume: reports.reduce((sum, report) => sum + Number(report.loanAmount), 0),
   }), [reports])
 
-  async function handleLogin(enteredUsername) {
+  async function handleLogin(account) {
     setIsLoggedIn(true)
-    setUsername(enteredUsername)
-    setForm((current) => ({ ...current, executive: enteredUsername }))
+    setPortal('employee')
+    setUsername(account.username)
+    setEmployeeId(account.employeeId)
+    setTeamMemberIds([])
+    setForm((current) => ({ ...current, executive: account.username, employeeId: account.employeeId }))
     const spreadsheetReports = await fetchReportsFromGoogleSheets()
     if (spreadsheetReports.length > 0) {
       const normalizedReports = spreadsheetReports.map(normalizeSheetReport)
       setReports(normalizedReports)
       localStorage.setItem('rudransh-reports', JSON.stringify(normalizedReports))
     }
+  }
+
+  async function handleTeamLeaderLogin(credentials) {
+    const result = await fetchTeamReportsFromGoogleSheets(credentials.employeeId, credentials.username, credentials.password)
+    if (!result.authorized) return false
+
+    const normalizedReports = result.reports.map(normalizeSheetReport)
+    setUsername(credentials.username.trim())
+    setEmployeeId(credentials.employeeId)
+    setTeamMemberIds(TEAM_MEMBERS_BY_LEADER[credentials.employeeId])
+    setReports(normalizedReports)
+    setForm({ ...emptyReport, executive: credentials.username.trim(), employeeId: credentials.employeeId })
+    setPortal('teamLeader')
+    setIsLoggedIn(true)
+    return true
   }
 
   async function handleAdminLogin(enteredUsername) {
@@ -217,6 +241,9 @@ function App() {
   function handleLogout() {
     setIsLoggedIn(false)
     setPortal('employee')
+    setUsername('')
+    setEmployeeId('')
+    setTeamMemberIds([])
   }
 
   function handleChange(event) {
@@ -232,6 +259,7 @@ function App() {
       id: Date.now(),
       formType,
       executive: form.executive,
+      employeeId,
       date: dateForSpreadsheet(form.date),
       customer: form.customer,
       phone: form.phone,
@@ -257,12 +285,12 @@ function App() {
       return nextReports
     })
     void syncReportToGoogleSheets(newReport)
-    setForm({ ...emptyReport, executive: username })
+    setForm({ ...emptyReport, executive: username, employeeId })
     setNotice(`${formType} submitted successfully`)
     window.setTimeout(() => setNotice(''), 3500)
   }
 
-  if (!isLoggedIn) return <LoginScreen onLogin={handleLogin} onAdminLogin={handleAdminLogin} />
+  if (!isLoggedIn) return <LoginScreen onLogin={handleLogin} onAdminLogin={handleAdminLogin} onTeamLeaderLogin={handleTeamLeaderLogin} />
   if (portal === 'admin') return <AdminPortal username={username} reports={reports} setReports={setReports} onLogout={handleLogout} />
 
   return <div className="report-workspace">
@@ -274,7 +302,7 @@ function App() {
       </div>
     </header>
     {notice && <div className="toast"><span className="toast-check"><Check size={15} /></span>{notice}<button onClick={() => setNotice('')} aria-label="Dismiss"><X size={15} /></button></div>}
-    <main className="report-main"><ReportForm form={form} formType={formType} setFormType={setFormType} username={username} reports={reports} onChange={handleChange} onSubmit={submitReport} /></main>
+    <main className="report-main"><ReportForm form={form} formType={formType} setFormType={setFormType} username={username} reports={reports} onChange={handleChange} onSubmit={submitReport} />{portal === 'teamLeader' && <TeamMembersData reports={reports} employeeIds={teamMemberIds} />}</main>
   </div>
 }
 
@@ -286,6 +314,7 @@ function normalizeSheetReport(report) {
     id: report.id || report['S.No.'] || report['Serial Number'] || Date.now(),
     reportType,
     executive: report['Executive Name'] || report['Executive'] || '',
+    employeeId: String(report['Employee ID'] || report.employeeId || ''),
     date: formatReportDate(dateRaw),
     dateValue: reportDateInput(dateRaw),
     customer: report['Customer Name'] || report.Customer || '',
@@ -309,7 +338,7 @@ function normalizeSheetReport(report) {
   }
 }
 
-function LoginScreen({ onLogin, onAdminLogin }) {
+function LoginScreen({ onLogin, onAdminLogin, onTeamLeaderLogin }) {
   const [credentials, setCredentials] = useState({ employeeId: '', username: '', email: '', password: '', confirmPassword: '' })
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -336,6 +365,20 @@ function LoginScreen({ onLogin, onAdminLogin }) {
 
   async function submit(event) {
     event.preventDefault()
+
+    if (mode === 'teamLeader') {
+      if (!/^\d{3}$/.test(credentials.employeeId) || !credentials.username.trim() || !credentials.password) {
+        setError('Enter your username, 3-digit employee ID and password.')
+        return
+      }
+      const authorized = await onTeamLeaderLogin({
+        employeeId: credentials.employeeId,
+        username: credentials.username.trim(),
+        password: credentials.password,
+      })
+      if (!authorized) setError('Access denied. Check your team leader credentials.')
+      return
+    }
 
     if (mode === 'admin') {
       const emailMatches = credentials.email.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase()
@@ -384,14 +427,15 @@ function LoginScreen({ onLogin, onAdminLogin }) {
       setError('Access denied. Check your username, employee ID and password.')
       return
     }
-    onLogin(account.username)
+    onLogin({ username: account.username, employeeId: account.employeeId })
   }
 
   const isAdmin = mode === 'admin'
+  const isTeamLeader = mode === 'teamLeader'
   const isRegistering = mode === 'register'
-  const pageTitle = isAdmin ? 'Login to admin portal' : isRegistering ? 'Create employee account' : 'Login to your workspace'
+  const pageTitle = isAdmin ? 'Login to admin portal' : isTeamLeader ? 'Login to team leader portal' : isRegistering ? 'Create employee account' : 'Login to your workspace'
 
-  return <div className="login-page"><div className="login-visual"><div className="visual-brand"><img className="company-logo" src={logoSrc} alt="Rudransh Capital Advisory Services" /></div><div className="visual-copy"><p className="eyebrow">{isAdmin ? 'ADMIN PORTAL' : 'EMPLOYEE ACCESS ONLY'}</p><h1>Every visit.<br /><em>One clear report.</em></h1><p>{isAdmin ? 'Review employee activity and keep every case moving.' : 'Sign in to capture, track, and move every customer case forward.'}</p></div><div className="visual-footer"><span>Secure workspace</span><span>•</span><span>Pune, IN</span></div></div><div className="login-panel"><div className="login-form-wrap"><div className="mobile-brand"><img className="company-logo" src={logoSrc} alt="Rudransh Capital Advisory Services" /></div><p className="eyebrow">{isAdmin ? 'ADMIN LOGIN' : isRegistering ? 'EMPLOYEE SIGN UP' : 'EMPLOYEE LOGIN'}</p><h2>{pageTitle}</h2><p className="form-intro">{isAdmin ? 'Use your assigned administrator credentials.' : isRegistering ? 'Register with your 3-digit employee ID.' : 'Enter your employee account details.'}</p><form onSubmit={submit}>{isAdmin ? <><Field label="Username" name="username" value={credentials.username} onChange={updateCredentials} placeholder="Enter your name" required /><Field label="Work email" name="email" type="email" value={credentials.email} onChange={updateCredentials} placeholder="Narsu.pawar@rudranshcapital.com" required /></> : <><Field label="Employee ID" name="employeeId" type="text" value={credentials.employeeId} onChange={updateCredentials} placeholder="3-digit employee ID" required /><Field label="Username" name="username" value={credentials.username} onChange={updateCredentials} placeholder="Enter your username" required /></>}{!isRegistering && <label className="field"><span>Password<b>*</b></span><span className="password-input"><input name="password" type={showPassword ? 'text' : 'password'} value={credentials.password} onChange={updateCredentials} placeholder="Enter your password" required /><button type="button" className="password-toggle" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? 'Hide password' : 'Show password'} title={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? <EyeOff size={16} /> : <Eye size={16} />}</button></span></label>}{isRegistering && <><label className="field"><span>Password<b>*</b></span><input name="password" type={showPassword ? 'text' : 'password'} value={credentials.password} onChange={updateCredentials} placeholder="Create a password" required /></label><Field label="Confirm password" name="confirmPassword" type="password" value={credentials.confirmPassword} onChange={updateCredentials} placeholder="Re-enter your password" required /></>}{error && <p className={error.startsWith('Account created') ? 'auth-success' : 'auth-error'}>{error}</p>}<button className="primary-button full-button" type="submit">{isAdmin ? 'Enter admin portal' : isRegistering ? 'Create account' : 'Login'} <ArrowUpRight size={17} /></button></form><div className="login-help">{isAdmin ? 'Employee access?' : isRegistering ? 'Already registered?' : 'First time here?'} <button type="button" className="text-button" onClick={() => switchMode(isAdmin ? 'register' : isRegistering ? 'login' : 'register')}>{isAdmin ? 'Employee sign up' : isRegistering ? 'Go to login' : 'Create account'}</button></div>{!isAdmin && <div className="login-help">Administrator access? <button type="button" className="text-button" onClick={() => switchMode('admin')}>Open admin portal</button></div>}{isAdmin && <div className="login-help"><button type="button" className="text-button" onClick={() => switchMode('login')}>Login as employee</button></div>}</div><span className="login-copyright">© 2026 Rudransh Capital Advisory Services</span></div></div>
+  return <div className="login-page"><div className="login-visual"><div className="visual-brand"><img className="company-logo" src={logoSrc} alt="Rudransh Capital Advisory Services" /></div><div className="visual-copy"><p className="eyebrow">{isAdmin ? 'ADMIN PORTAL' : isTeamLeader ? 'TEAM LEADER ACCESS' : 'EMPLOYEE ACCESS ONLY'}</p><h1>Every visit.<br /><em>One clear report.</em></h1><p>{isAdmin ? 'Review employee activity and keep every case moving.' : isTeamLeader ? 'Review reports from your assigned team members.' : 'Sign in to capture, track, and move every customer case forward.'}</p></div><div className="visual-footer"><span>Secure workspace</span><span>•</span><span>Pune, IN</span></div></div><div className="login-panel"><div className="login-form-wrap"><div className="mobile-brand"><img className="company-logo" src={logoSrc} alt="Rudransh Capital Advisory Services" /></div><p className="eyebrow">{isAdmin ? 'ADMIN LOGIN' : isTeamLeader ? 'TEAM LEADER LOGIN' : isRegistering ? 'EMPLOYEE SIGN UP' : 'EMPLOYEE LOGIN'}</p><h2>{pageTitle}</h2><p className="form-intro">{isAdmin ? 'Use your assigned administrator credentials.' : isTeamLeader ? 'Enter your team leader username, employee ID and password.' : isRegistering ? 'Register with your 3-digit employee ID.' : 'Enter your employee account details.'}</p><form onSubmit={submit}>{(isAdmin || isTeamLeader) && <Field label="Username" name="username" value={credentials.username} onChange={updateCredentials} placeholder="Enter your name" required />}{!isAdmin && <Field label="Employee ID" name="employeeId" type="text" value={credentials.employeeId} onChange={updateCredentials} placeholder="3-digit employee ID" required />}{!isAdmin && !isTeamLeader && <Field label="Username" name="username" value={credentials.username} onChange={updateCredentials} placeholder="Enter your username" required />}{isAdmin && <Field label="Work email" name="email" type="email" value={credentials.email} onChange={updateCredentials} placeholder="Narsu.pawar@rudranshcapital.com" required />}{!isRegistering && <label className="field"><span>Password<b>*</b></span><span className="password-input"><input name="password" type={showPassword ? 'text' : 'password'} value={credentials.password} onChange={updateCredentials} placeholder="Enter your password" required /><button type="button" className="password-toggle" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? 'Hide password' : 'Show password'} title={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? <EyeOff size={16} /> : <Eye size={16} />}</button></span></label>}{isRegistering && <><label className="field"><span>Password<b>*</b></span><input name="password" type={showPassword ? 'text' : 'password'} value={credentials.password} onChange={updateCredentials} placeholder="Create a password" required /></label><Field label="Confirm password" name="confirmPassword" type="password" value={credentials.confirmPassword} onChange={updateCredentials} placeholder="Re-enter your password" required /></>}{error && <p className={error.startsWith('Account created') ? 'auth-success' : 'auth-error'}>{error}</p>}<button className="primary-button full-button" type="submit">{isAdmin ? 'Enter admin portal' : isTeamLeader ? 'Enter team leader portal' : isRegistering ? 'Create account' : 'Login'} <ArrowUpRight size={17} /></button></form>{!isTeamLeader && <div className="login-help">{isAdmin ? 'Employee access?' : isRegistering ? 'Already registered?' : 'First time here?'} <button type="button" className="text-button" onClick={() => switchMode(isAdmin ? 'register' : isRegistering ? 'login' : 'register')}>{isAdmin ? 'Employee sign up' : isRegistering ? 'Go to login' : 'Create account'}</button></div>}{!isAdmin && !isTeamLeader && <div className="login-help">Team leader? <button type="button" className="text-button" onClick={() => switchMode('teamLeader')}>Login as team leader</button></div>}{!isAdmin && !isTeamLeader && <div className="login-help">Administrator access? <button type="button" className="text-button" onClick={() => switchMode('admin')}>Open admin portal</button></div>}{isTeamLeader && <div className="login-help"><button type="button" className="text-button" onClick={() => switchMode('login')}>Back to employee login</button></div>}{isAdmin && <div className="login-help"><button type="button" className="text-button" onClick={() => switchMode('login')}>Login as employee</button></div>}</div><span className="login-copyright">© 2026 Rudransh Capital Advisory Services</span></div></div>
 }
 
 function AdminPortal({ username, reports, setReports, onLogout }) {
@@ -664,6 +708,37 @@ function ReportForm({ form, formType, setFormType, username, reports, onChange, 
       </form>}
     </>
   )
+}
+
+function TeamMembersData({ reports, employeeIds }) {
+  const [selectedForm, setSelectedForm] = useState('Leads Form')
+  const formTabs = Object.keys(ADMIN_FORM_SCHEMAS)
+  const formSchema = ADMIN_FORM_SCHEMAS[selectedForm]
+  const teamReports = reports.filter((report) => (report.reportType || report.formType) === selectedForm
+    && employeeIds.includes(String(report.employeeId || '').padStart(3, '0')))
+
+  function displayTeamValue(report, field) {
+    const value = report[field.key]
+    if (value === '' || value == null) return '-'
+    if (field.key === 'phone') {
+      const digits = String(value).replace(/\D/g, '')
+      return digits.length === 10 ? `${'•'.repeat(6)}${digits.slice(-4)}` : String(value)
+    }
+    if (field.type === 'number') return formatCurrency(value)
+    if (field.type === 'date') return formatAdminTableDate(value)
+    return value
+  }
+
+  return <section className="team-members-section">
+    <div className="team-members-heading"><div><p className="eyebrow">TEAM LEADER</p><h2>View team members data</h2><p className="subheading">Reports are limited to employee IDs assigned to your team.</p></div><span className="admin-count">{teamReports.length} reports</span></div>
+    <div className="admin-form-tabs" role="tablist" aria-label="Team report type">
+      {formTabs.map((tab) => <button key={tab} type="button" role="tab" aria-selected={selectedForm === tab} className={selectedForm === tab ? 'admin-form-tab active' : 'admin-form-tab'} onClick={() => setSelectedForm(tab)}>{tab}</button>)}
+    </div>
+    <section className="admin-table-card employee-report-table">
+      {teamReports.length > 0 ? <div className="admin-table-wrap"><table><thead><tr><th>Employee ID</th>{formSchema.map((field) => <th key={field.key}>{field.label}</th>)}</tr></thead><tbody>{teamReports.map((report) => <tr key={report.id}><td>{report.employeeId}</td>{formSchema.map((field) => <td key={field.key} className={field.key === 'remark' ? 'remark-cell' : ''}>{displayTeamValue(report, field)}</td>)}</tr>)}</tbody></table></div> : <div className="empty-state">No {selectedForm.toLowerCase()} reports found for your team.</div>}
+      <div className="admin-table-footer">Showing {teamReports.length} {selectedForm.toLowerCase()} team reports</div>
+    </section>
+  </section>
 }
 
 function History({ reports, query, setQuery }) { return <><section className="page-heading"><div><p className="eyebrow">ALL ACTIVITY</p><h1>Report history</h1><p className="subheading">A searchable record of every customer report.</p></div><button className="secondary-button"><FileSpreadsheet size={17} /> Export sheet</button></section><div className="history-panel panel"><div className="history-toolbar"><div className="search-input"><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search customer, location, bank..." /></div><button className="filter-button"><CalendarDays size={16} /> Date range <ChevronDown size={15} /></button><button className="filter-button">All statuses <ChevronDown size={15} /></button></div><div className="table-wrap"><table><thead><tr><th>Customer</th><th>Executive</th><th>Location</th><th>Loan amount</th><th>Bank</th><th>Login date</th><th>Status</th><th /></tr></thead><tbody>{reports.map((report) => <tr key={report.id}><td><div className="table-customer"><span className="customer-avatar">{report.customer.split(' ').map((word) => word[0]).join('')}</span><strong>{report.customer}</strong></div></td><td>{report.executive}</td><td><span className="location-cell"><MapPin size={14} /> {report.location}</span></td><td className="amount-cell">{formatCurrency(report.loanAmount)}</td><td>{report.bank}</td><td>{report.loginDate}</td><td><Status status={report.status} /></td><td><button className="icon-button"><ArrowUpRight size={16} /></button></td></tr>)}</tbody></table></div>{reports.length === 0 && <div className="empty-state">No reports match your search.</div>}<div className="table-footer">Showing <strong>{reports.length}</strong> of <strong>{reports.length}</strong> reports <span>Synced with Google Sheets · just now</span></div></div></> }

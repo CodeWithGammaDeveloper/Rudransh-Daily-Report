@@ -36,6 +36,41 @@ function doPost(e) {
 		const data = JSON.parse(e.postData.contents);
 		const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
 
+		if (data.action === 'teamReports') {
+			const membersByLeader = {
+				'024': ['019', '018', '012', '008', '032', '009'],
+				'027': ['030', '028', '029', '031'],
+			};
+			const leaderId = String(data.employeeId || '');
+			const expectedPassword = PropertiesService.getScriptProperties().getProperty(`TEAM_LEADER_${leaderId}_PASSWORD`);
+			if (!membersByLeader[leaderId] || !expectedPassword || data.password !== expectedPassword || !String(data.username || '').trim()) {
+				return ContentService
+					.createTextOutput(JSON.stringify({ success: false, authorized: false, reports: [] }))
+					.setMimeType(ContentService.MimeType.JSON);
+			}
+
+			const teamMemberIds = new Set(membersByLeader[leaderId]);
+			const formTabs = ['Leads Form', 'Login Form', 'Disbursement Form'];
+			const reports = formTabs.flatMap((tabName) => {
+				const sheet = spreadsheet.getSheetByName(tabName);
+				if (!sheet || sheet.getLastRow() < 2) return [];
+				const values = sheet.getDataRange().getValues();
+				const headers = values.shift() || [];
+				const employeeIdIndex = headers.findIndex((header) => String(header).trim().toLowerCase() === 'employee id');
+				if (employeeIdIndex < 0) return [];
+				return values.filter((row) => teamMemberIds.has(String(row[employeeIdIndex] || '').padStart(3, '0')))
+					.map((row) => {
+						const report = { id: `${tabName}:${row[0]}`, formType: tabName, sourceTab: tabName };
+						headers.forEach((header, index) => { report[String(header).trim()] = row[index]; });
+						return report;
+					});
+			});
+
+			return ContentService
+				.createTextOutput(JSON.stringify({ success: true, authorized: true, reports }))
+				.setMimeType(ContentService.MimeType.JSON);
+		}
+
 		if (data.action === 'delete') {
 			let deletedCount = 0;
 			(data.serialNumbers || []).forEach((id) => {
@@ -125,9 +160,9 @@ function doPost(e) {
 		if (!sheet) sheet = spreadsheet.insertSheet(tabName);
 
 		const headersByForm = {
-			'Leads Form': ['S.No.', 'Executive Name', 'Date', 'Customer Name', 'Company Name', 'Net Salary', 'Location', 'Obligation', 'BT/FRESH', 'Loan Amount', 'Login Bank', 'Remark', 'EMI Amount', 'Current Outstanding Amount', 'Contact No.'],
-			'Login Form': ['S.No.', 'Executive Name', 'Date', 'Customer Name', 'Loan Amount', 'Bank', 'Login Date', 'Login Status', 'Remark', 'Contact No.'],
-			'Disbursement Form': ['S.No.', 'Executive Name', 'Date', 'Customer Name', 'Disbursement Amount', 'Bank', 'Cash/Bank Deviation', 'Contact No.'],
+			'Leads Form': ['S.No.', 'Executive Name', 'Date', 'Customer Name', 'Company Name', 'Net Salary', 'Location', 'Obligation', 'BT/FRESH', 'Loan Amount', 'Login Bank', 'Remark', 'EMI Amount', 'Current Outstanding Amount', 'Contact No.', 'Employee ID'],
+			'Login Form': ['S.No.', 'Executive Name', 'Date', 'Customer Name', 'Loan Amount', 'Bank', 'Login Date', 'Login Status', 'Remark', 'Contact No.', 'Employee ID'],
+			'Disbursement Form': ['S.No.', 'Executive Name', 'Date', 'Customer Name', 'Disbursement Amount', 'Bank', 'Cash/Bank Deviation', 'Contact No.', 'Employee ID'],
 		};
 		const expectedHeaders = headersByForm[tabName];
 		sheet.getRange(1, 1, 1, expectedHeaders.length).setValues([expectedHeaders]);
@@ -147,6 +182,7 @@ function doPost(e) {
 			's.no.': nextSerial,
 			'serial number': nextSerial,
 			'executive name': data.executive || '',
+			'employee id': data.employeeId || '',
 			'date': data.date || '',
 			'customer name': data.customer || '',
 			'contact no.': data.phone || '',

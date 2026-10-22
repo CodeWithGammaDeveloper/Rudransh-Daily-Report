@@ -80,6 +80,12 @@ body { background: #f6f7f8; }
 .employee-report-table th, .employee-report-table td { white-space: nowrap; }
 .employee-report-filters { margin: 0; padding: 16px; border: 0; border-bottom: 1px solid #edf1f4; border-radius: 0; box-shadow: none; }
 .employee-report-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.team-members-section { width: min(920px, calc(100% - 40px)); margin: 34px auto 0; }
+.team-members-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.team-members-heading h2 { margin: 7px 0 6px; color: #1e3b60; font-family: 'Manrope'; font-size: 20px; }
+.team-members-heading .subheading { margin: 0; }
+.team-members-section .admin-form-tabs { margin-bottom: 12px; }
+.team-members-section .employee-report-table { width: 100%; }
 .report-remark-field { margin-top: 18px; }
 .admin-workspace { min-height: 100vh; background: #f6f7f8; color: #22344d; }
 .admin-main { width: min(1440px, calc(100% - 70px)); margin: 0 auto; padding: 48px 0 65px; }

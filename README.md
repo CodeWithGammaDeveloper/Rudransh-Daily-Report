@@ -31,4 +31,6 @@ The Apps Script implementation in `google-apps-script/Code.gs` creates/uses the 
 
 The admin portal uses the same `/exec` URL with a `GET` request to load spreadsheet rows. After updating `Code.gs`, deploy a new web-app version so both `POST` submissions and `GET` report loading are active.
 
+Team leader access uses the Apps Script `teamReports` action. Before redeploying the script, add the leader passwords in Apps Script **Project Settings > Script Properties** using keys `TEAM_LEADER_024_PASSWORD` and `TEAM_LEADER_027_PASSWORD`. Keep these values in Script Properties; do not add them to frontend code. Team reports are restricted by the employee IDs configured for each leader, and report rows need an `Employee ID` value for team attribution.
+
 For production, move credential validation out of the browser and behind an authenticated server or company identity provider. The current client-side check is suitable for the internal prototype but any credential shipped in a front-end bundle can be inspected by users.

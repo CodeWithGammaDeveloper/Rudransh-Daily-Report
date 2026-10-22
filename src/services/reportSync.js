@@ -29,6 +29,27 @@ export async function fetchReportsFromGoogleSheets() {
   }
 }
 
+export async function fetchTeamReportsFromGoogleSheets(employeeId, username, password) {
+  const endpoint = import.meta.env.VITE_GOOGLE_SHEETS_WEBHOOK_URL
+  if (!endpoint) return { authorized: false, reports: [] }
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'teamReports', employeeId, username, password }),
+    })
+    if (!response.ok) return { authorized: false, reports: [] }
+    const payload = await response.json()
+    return {
+      authorized: payload.authorized === true,
+      reports: Array.isArray(payload.reports) ? payload.reports : [],
+    }
+  } catch {
+    return { authorized: false, reports: [] }
+  }
+}
+
 export async function deleteReportsFromGoogleSheets(serialNumbers) {
   const endpoint = import.meta.env.VITE_GOOGLE_SHEETS_WEBHOOK_URL
   if (!endpoint || serialNumbers.length === 0) return { deleted: false }
