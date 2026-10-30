@@ -160,7 +160,7 @@ function doPost(e) {
 		if (!sheet) sheet = spreadsheet.insertSheet(tabName);
 
 		const headersByForm = {
-			'Leads Form': ['S.No.', 'Executive Name', 'Date', 'Customer Name', 'Company Name', 'Net Salary', 'Location', 'Obligation', 'BT/FRESH', 'Loan Amount', 'Login Bank', 'Remark', 'EMI Amount', 'Current Outstanding Amount', 'Contact No.', 'Employee ID'],
+			'Leads Form': ['S.No.', 'Executive Name', 'Date', 'Customer Name', 'Company Name', 'Net Salary', 'Location', 'Obligation', 'BT/FRESH', 'Loan Amount', 'Login Bank', 'Remark', 'EMI Amount', 'Current Outstanding Amount', 'Contact No.', 'Employee ID', 'No Leads'],
 			'Login Form': ['S.No.', 'Executive Name', 'Date', 'Customer Name', 'Loan Amount', 'Bank', 'Login Date', 'Login Status', 'Remark', 'Contact No.', 'Employee ID'],
 			'Disbursement Form': ['S.No.', 'Executive Name', 'Date', 'Customer Name', 'Disbursement Amount', 'Bank', 'Cash/Bank Deviation', 'Contact No.', 'Employee ID'],
 		};
@@ -183,6 +183,7 @@ function doPost(e) {
 			'serial number': nextSerial,
 			'executive name': data.executive || '',
 			'employee id': data.employeeId || '',
+			'no leads': data.noLeads ? 'TRUE' : '',
 			'date': data.date || '',
 			'customer name': data.customer || '',
 			'contact no.': data.phone || '',

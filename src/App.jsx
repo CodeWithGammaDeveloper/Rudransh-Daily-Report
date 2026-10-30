@@ -52,6 +52,7 @@ const ADMIN_FORM_SCHEMAS = {
     { key: 'date', label: 'Date', type: 'date' },
     { key: 'customer', label: 'Customer Name' },
     { key: 'phone', label: 'Contact No.' },
+    { key: 'noLeads', label: 'No Leads' },
     { key: 'companyName', label: 'Company Name' },
     { key: 'netSalary', label: 'Net Salary', type: 'number' },
     { key: 'emiAmount', label: 'EMI Amount', type: 'number' },
@@ -290,6 +291,38 @@ function App() {
     window.setTimeout(() => setNotice(''), 3500)
   }
 
+  function submitNoLeads() {
+    const newReport = {
+      id: Date.now(),
+      formType: 'Leads Form',
+      executive: username,
+      employeeId,
+      date: dateForSpreadsheet(new Date().toLocaleDateString('en-GB')),
+      customer: '',
+      phone: '',
+      noLeads: true,
+      companyName: '',
+      netSalary: '',
+      emiAmount: '',
+      currentOutstandingAmount: '',
+      location: '',
+      obligation: '',
+      btFresh: '',
+      loanAmount: '',
+      bank: '',
+      remark: '',
+      time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+    }
+    setReports((current) => {
+      const nextReports = [newReport, ...current]
+      localStorage.setItem('rudransh-reports', JSON.stringify(nextReports))
+      return nextReports
+    })
+    void syncReportToGoogleSheets(newReport)
+    setNotice('No Leads recorded successfully')
+    window.setTimeout(() => setNotice(''), 3500)
+  }
+
   if (!isLoggedIn) return <LoginScreen onLogin={handleLogin} onAdminLogin={handleAdminLogin} onTeamLeaderLogin={handleTeamLeaderLogin} />
   if (portal === 'admin') return <AdminPortal username={username} reports={reports} setReports={setReports} onLogout={handleLogout} />
 
@@ -302,7 +335,7 @@ function App() {
       </div>
     </header>
     {notice && <div className="toast"><span className="toast-check"><Check size={15} /></span>{notice}<button onClick={() => setNotice('')} aria-label="Dismiss"><X size={15} /></button></div>}
-    <main className="report-main"><ReportForm form={form} formType={formType} setFormType={setFormType} username={username} reports={reports} onChange={handleChange} onSubmit={submitReport} />{portal === 'teamLeader' && <TeamMembersData reports={reports} employeeIds={teamMemberIds} />}</main>
+    <main className="report-main"><ReportForm form={form} formType={formType} setFormType={setFormType} username={username} reports={reports} onChange={handleChange} onSubmit={submitReport} onNoLeads={submitNoLeads} />{portal === 'teamLeader' && <TeamMembersData reports={reports} employeeIds={teamMemberIds} />}</main>
   </div>
 }
 
@@ -319,6 +352,7 @@ function normalizeSheetReport(report) {
     dateValue: reportDateInput(dateRaw),
     customer: report['Customer Name'] || report.Customer || '',
     phone: String(report['Contact No.'] || report['Phone No.'] || report['Phone Number'] || report.Phone || ''),
+    noLeads: report['No Leads'] || report.noLeads || '',
     location: report.Location || '',
     companyName: report['Company Name'] || '',
     netSalary: Number(report['Net Salary'] || 0),
@@ -616,8 +650,9 @@ function getInitials(name) {
   return name.split(' ').map((word) => word[0]).join('').slice(0, 2).toUpperCase()
 }
 
-function ReportForm({ form, formType, setFormType, username, reports, onChange, onSubmit }) {
+function ReportForm({ form, formType, setFormType, username, reports, onChange, onSubmit, onNoLeads }) {
   const [showMyReports, setShowMyReports] = useState(false)
+  const [noLeadsSubmitted, setNoLeadsSubmitted] = useState(false)
   const [reportFilters, setReportFilters] = useState({ from: '', to: '', customer: '' })
   const formTabs = ['Leads Form', 'Login Form', 'Disbursement Form']
   const reportSchema = ADMIN_FORM_SCHEMAS[formType]
@@ -666,7 +701,9 @@ function ReportForm({ form, formType, setFormType, username, reports, onChange, 
         </section>
         {filteredEmployeeReports.length > 0 ? <div className="admin-table-wrap"><table><thead><tr>{reportSchema.map((field) => <th key={field.key}>{field.label}</th>)}</tr></thead><tbody>{filteredEmployeeReports.map((report) => <tr key={report.id}>{reportSchema.map((field) => <td key={field.key} className={field.key === 'remark' ? 'remark-cell' : ''}>{renderReportValue(report, field)}</td>)}</tr>)}</tbody></table></div> : <div className="empty-state">{employeeReports.length ? 'No reports match these filters.' : `No ${formType.toLowerCase()} reports yet.`}</div>}
         <div className="admin-table-footer">Showing {filteredEmployeeReports.length} of {employeeReports.length} {formType.toLowerCase()} reports</div>
-      </section> : <form className="report-form" onSubmit={onSubmit}>
+      </section> : <>
+        {formType === 'Leads Form' && <label className="no-leads-toggle"><input type="checkbox" checked={noLeadsSubmitted} onChange={(event) => { const checked = event.target.checked; setNoLeadsSubmitted(checked); if (checked) onNoLeads() }} /><span>No Leads</span></label>}
+        {formType === 'Leads Form' && noLeadsSubmitted ? <div className="no-leads-confirmation">No Leads recorded for today.</div> : <form className="report-form" onSubmit={onSubmit}>
         <div className="form-card">
           <div className="form-card-heading">
             <div><span className="step-number">{formTabs.indexOf(formType) + 1}</span><div><h2>{formType}</h2><p>Executive: {username}</p></div></div>
@@ -706,6 +743,7 @@ function ReportForm({ form, formType, setFormType, username, reports, onChange, 
         </div>
         <div className="form-actions"><button type="submit" className="primary-button"><Check size={18} /> Submit {formType}</button></div>
       </form>}
+      </>}
     </>
   )
 }

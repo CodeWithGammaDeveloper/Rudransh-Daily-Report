@@ -87,6 +87,9 @@ body { background: #f6f7f8; }
 .team-members-section .admin-form-tabs { margin-bottom: 12px; }
 .team-members-section .employee-report-table { width: 100%; }
 .report-remark-field { margin-top: 18px; }
+.no-leads-toggle { width: min(900px, calc(100% - 40px)); margin: 0 auto 14px; display: flex; align-items: center; gap: 9px; color: #304f6d; font-size: 12px; font-weight: 700; }
+.no-leads-toggle input { width: 16px; height: 16px; margin: 0; accent-color: #173b63; }
+.no-leads-confirmation { width: min(900px, calc(100% - 40px)); margin: 0 auto 14px; padding: 18px; border: 1px solid #cce5d2; border-radius: 7px; background: #eaf5ed; color: #326d4d; font-size: 13px; }
 .admin-workspace { min-height: 100vh; background: #f6f7f8; color: #22344d; }
 .admin-main { width: min(1440px, calc(100% - 70px)); margin: 0 auto; padding: 48px 0 65px; }
 .admin-form-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0 0 16px; }
