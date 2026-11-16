@@ -124,6 +124,9 @@ body { background: #f6f7f8; }
 .admin-table-card td strong { color: #304f6d; }
 .remark-cell { max-width: 210px; white-space: normal; line-height: 1.35; }
 .admin-table-footer { border-top: 1px solid #edf1f4; padding: 14px 15px; color: #8b9aa8; font-size: 10px; }
+.download-report-button { margin-left: 12px; border: 1px solid #d8e1e9; border-radius: 6px; background: #fff; color: #335675; padding: 7px 10px; display: inline-flex; align-items: center; gap: 7px; font-size: 10px; font-weight: 700; }
+.download-report-button:hover:not(:disabled) { border-color: #c6a03b; background: #fffdf6; }
+.download-report-button:disabled { opacity: .5; cursor: not-allowed; }
 .admin-edit-button { border: 1px solid #d8e1e9; border-radius: 5px; background: #fff; color: #335675; padding: 6px 9px; font-size: 10px; font-weight: 700; }
 .admin-edit-button:hover { border-color: #c6a03b; background: #fffdf6; }
 .admin-edit-backdrop { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 20px; background: rgba(16, 36, 59, .48); }

@@ -146,6 +146,45 @@ function dateForSpreadsheet(value) {
   return `${String(dateParts.day).padStart(2, '0')}/${String(dateParts.month).padStart(2, '0')}/${dateParts.year}`
 }
 
+async function downloadReportWorkbook(filename, headers, rows) {
+  const { default: ExcelJS } = await import('exceljs')
+  const workbook = new ExcelJS.Workbook()
+  const worksheet = workbook.addWorksheet('Reports')
+  worksheet.addRow(headers)
+  rows.forEach((row) => worksheet.addRow(row))
+  worksheet.getRow(1).font = { bold: true }
+  worksheet.views = [{ state: 'frozen', ySplit: 1 }]
+  worksheet.columns = headers.map((header, index) => ({
+    header,
+    key: `column${index + 1}`,
+    width: Math.min(Math.max(String(header).length + 4, 14), 32),
+  }))
+
+  const buffer = await workbook.xlsx.writeBuffer()
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+function exportFieldValue(report, field, maskPhone) {
+  const value = report[field.key]
+  if (value === '' || value == null) return ''
+  if (field.key === 'noLeads') return value === true || String(value).toUpperCase() === 'TRUE' ? 'TRUE' : ''
+  if (field.key === 'phone' && maskPhone) {
+    const digits = String(value).replace(/\D/g, '')
+    return digits.length === 10 ? `${'•'.repeat(6)}${digits.slice(-4)}` : String(value)
+  }
+  if (field.type === 'date') return formatAdminTableDate(value)
+  if (field.type === 'number') return Number(value)
+  return String(value)
+}
+
 function matchesDateFilter(value, filterValue) {
   if (!value || !filterValue) return false
 
@@ -544,6 +583,15 @@ function AdminPortal({ username, reports, setReports, onLogout }) {
     })
   }
 
+  async function downloadFilteredReports() {
+    const headers = ['S.No.', ...formSchema.map((field) => field.label)]
+    const rows = visibleReports.map((report) => [
+      String(report.id).split(':').pop(),
+      ...formSchema.map((field) => exportFieldValue(report, field, false)),
+    ])
+    await downloadReportWorkbook(`${selectedForm.replaceAll(' ', '-')}-reports.xlsx`, headers, rows)
+  }
+
   async function deleteFilteredReports() {
     if (visibleReports.length === 0) return
     const confirmed = window.confirm(`Permanently delete ${visibleReports.length} ${selectedForm} row${visibleReports.length === 1 ? '' : 's'} from the spreadsheet? This cannot be undone.`)
@@ -620,7 +668,7 @@ function AdminPortal({ username, reports, setReports, onLogout }) {
           <div className="admin-table-toolbar"><span>{visibleReports.length} matching {selectedForm.toLowerCase()} entr{visibleReports.length === 1 ? 'y' : 'ies'}</span>{visibleReports.length > 0 && <button className="delete-filtered-button" onClick={deleteFilteredReports}><Trash2 size={15} /> Delete filtered data</button>}</div>
           <div className="admin-table-wrap"><table><thead><tr><th>S.No.</th>{formSchema.map((field) => <th key={field.key}>{field.label}</th>)}<th>Actions</th></tr></thead><tbody>{visibleReports.map((report) => <tr key={report.id}><td>{String(report.id).split(':').pop()}</td>{formSchema.map((field) => <td key={field.key} className={field.key === 'remark' ? 'remark-cell' : ''}>{field.key === 'noLeads' ? (report.noLeads ? 'TRUE' : '-') : field.type === 'number' && report[field.key] !== '' && report[field.key] != null ? formatCurrency(report[field.key]) : field.type === 'date' ? formatAdminTableDate(report[field.key]) : report[field.key] || '-'}</td>)}<td><button className="admin-edit-button" onClick={() => beginEdit(report)}>Edit</button></td></tr>)}</tbody></table></div>
           {visibleReports.length === 0 && <div className="empty-state">No {selectedForm.toLowerCase()} entries match the selected filters.</div>}
-          <div className="admin-table-footer">Showing {visibleReports.length} of {reports.filter((report) => report.reportType === selectedForm).length} {selectedForm.toLowerCase()} entries</div>
+          <div className="admin-table-footer">Showing {visibleReports.length} of {reports.filter((report) => report.reportType === selectedForm).length} {selectedForm.toLowerCase()} entries<button type="button" className="download-report-button" onClick={downloadFilteredReports} disabled={visibleReports.length === 0}><FileSpreadsheet size={16} /> Download Excel</button></div>
         </section> : <div className="admin-empty-prompt"><Search size={22} /><strong>Apply a filter to view entries</strong><span>The table will appear after you filter {selectedForm.toLowerCase()} data.</span></div>}
       </> : <div className="admin-empty-prompt"><ClipboardList size={22} /><strong>Choose a report section</strong><span>Select Leads Form, Login Form, or Disbursement Form to view its entries.</span></div>}
     </main>
@@ -679,6 +727,12 @@ function ReportForm({ form, formType, setFormType, username, reports, onChange, 
     return value
   }
 
+  async function downloadEmployeeReports() {
+    const headers = reportSchema.map((field) => field.label)
+    const rows = filteredEmployeeReports.map((report) => reportSchema.map((field) => exportFieldValue(report, field, true)))
+    await downloadReportWorkbook(`${formType.replaceAll(' ', '-')}-my-reports.xlsx`, headers, rows)
+  }
+
   return (
     <>
       <section className="page-heading">
@@ -701,7 +755,7 @@ function ReportForm({ form, formType, setFormType, username, reports, onChange, 
           <div className="admin-filter-grid employee-report-filter-grid"><div className="field admin-date-range-field"><span>Filter Date</span><div className="admin-date-range-inputs"><label><span>From</span><input aria-label="Report date from" type="date" value={reportFilters.from} onChange={(event) => setReportFilters((current) => ({ ...current, from: event.target.value }))} /></label><label><span>To</span><input aria-label="Report date to" type="date" value={reportFilters.to} onChange={(event) => setReportFilters((current) => ({ ...current, to: event.target.value }))} /></label></div></div><AdminSchemaField field={{ key: 'customer', label: 'Customer Name' }} value={reportFilters.customer} onChange={(event) => setReportFilters((current) => ({ ...current, customer: event.target.value }))} filterMode /></div>
         </section>
         {filteredEmployeeReports.length > 0 ? <div className="admin-table-wrap"><table><thead><tr>{reportSchema.map((field) => <th key={field.key}>{field.label}</th>)}</tr></thead><tbody>{filteredEmployeeReports.map((report) => <tr key={report.id}>{reportSchema.map((field) => <td key={field.key} className={field.key === 'remark' ? 'remark-cell' : ''}>{renderReportValue(report, field)}</td>)}</tr>)}</tbody></table></div> : <div className="empty-state">{employeeReports.length ? 'No reports match these filters.' : `No ${formType.toLowerCase()} reports yet.`}</div>}
-        <div className="admin-table-footer">Showing {filteredEmployeeReports.length} of {employeeReports.length} {formType.toLowerCase()} reports</div>
+        <div className="admin-table-footer">Showing {filteredEmployeeReports.length} of {employeeReports.length} {formType.toLowerCase()} reports<button type="button" className="download-report-button" onClick={downloadEmployeeReports} disabled={filteredEmployeeReports.length === 0}><FileSpreadsheet size={16} /> Download Excel</button></div>
       </section> : <>
         {formType === 'Leads Form' && <label className="no-leads-toggle"><input type="checkbox" checked={noLeadsSubmitted} onChange={(event) => { const checked = event.target.checked; setNoLeadsSubmitted(checked); if (checked) onNoLeads() }} /><span>No Leads</span></label>}
         {formType === 'Leads Form' && noLeadsSubmitted ? <div className="no-leads-confirmation">No Leads recorded for today.</div> : <form className="report-form" onSubmit={onSubmit}>
@@ -769,6 +823,15 @@ function TeamMembersData({ reports, employeeIds }) {
     return value
   }
 
+  async function downloadTeamReports() {
+    const headers = ['Employee ID', ...formSchema.map((field) => field.label)]
+    const rows = teamReports.map((report) => [
+      report.employeeId,
+      ...formSchema.map((field) => exportFieldValue(report, field, true)),
+    ])
+    await downloadReportWorkbook(`${selectedForm.replaceAll(' ', '-')}-team-reports.xlsx`, headers, rows)
+  }
+
   return <section className="team-members-section">
     <div className="team-members-heading"><div><p className="eyebrow">TEAM LEADER</p><h2>View team members data</h2><p className="subheading">Reports are limited to employee IDs assigned to your team.</p></div><span className="admin-count">{teamReports.length} reports</span></div>
     <div className="admin-form-tabs" role="tablist" aria-label="Team report type">
@@ -776,7 +839,7 @@ function TeamMembersData({ reports, employeeIds }) {
     </div>
     <section className="admin-table-card employee-report-table">
       {teamReports.length > 0 ? <div className="admin-table-wrap"><table><thead><tr><th>Employee ID</th>{formSchema.map((field) => <th key={field.key}>{field.label}</th>)}</tr></thead><tbody>{teamReports.map((report) => <tr key={report.id}><td>{report.employeeId}</td>{formSchema.map((field) => <td key={field.key} className={field.key === 'remark' ? 'remark-cell' : ''}>{displayTeamValue(report, field)}</td>)}</tr>)}</tbody></table></div> : <div className="empty-state">No {selectedForm.toLowerCase()} reports found for your team.</div>}
-      <div className="admin-table-footer">Showing {teamReports.length} {selectedForm.toLowerCase()} team reports</div>
+      <div className="admin-table-footer">Showing {teamReports.length} {selectedForm.toLowerCase()} team reports<button type="button" className="download-report-button" onClick={downloadTeamReports} disabled={teamReports.length === 0}><FileSpreadsheet size={16} /> Download Excel</button></div>
     </section>
   </section>
 }
