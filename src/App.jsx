@@ -27,7 +27,7 @@ import {
   UsersRound,
   X,
 } from 'lucide-react'
-import { deleteReportsFromGoogleSheets, fetchReportsFromGoogleSheets, fetchTeamReportsFromGoogleSheets, syncReportToGoogleSheets, updateReportInGoogleSheets } from './services/reportSync'
+import { deleteReportsFromGoogleSheets, fetchReportsFromGoogleSheets, fetchTeamReportsFromGoogleSheets, syncReportToGoogleSheets, updateReportInGoogleSheets, updateTeamReportInGoogleSheets } from './services/reportSync'
 import logoSrc from '../logo.png'
 
 const initialReports = [
@@ -52,7 +52,7 @@ const ADMIN_FORM_SCHEMAS = {
     { key: 'date', label: 'Date', type: 'date' },
     { key: 'customer', label: 'Customer Name' },
     { key: 'phone', label: 'Contact No.' },
-    { key: 'noLeads', label: 'No Leads' },
+    { key: 'noLeads', label: 'No Leads', type: 'checkbox' },
     { key: 'companyName', label: 'Company Name' },
     { key: 'netSalary', label: 'Net Salary', type: 'number' },
     { key: 'emiAmount', label: 'EMI Amount', type: 'number' },
@@ -217,6 +217,7 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [portal, setPortal] = useState('employee')
   const [teamMemberIds, setTeamMemberIds] = useState([])
+  const [teamLeaderAccess, setTeamLeaderAccess] = useState(null)
   const [activePage, setActivePage] = useState('Overview')
   const [reports, setReports] = useState(() => {
     const savedReports = localStorage.getItem('rudransh-reports')
@@ -246,6 +247,7 @@ function App() {
     setUsername(account.username)
     setEmployeeId(account.employeeId)
     setTeamMemberIds([])
+    setTeamLeaderAccess(null)
     setForm((current) => ({ ...current, executive: account.username, employeeId: account.employeeId }))
     const spreadsheetReports = await fetchReportsFromGoogleSheets()
     if (spreadsheetReports.length > 0) {
@@ -263,6 +265,7 @@ function App() {
     setUsername(credentials.username.trim())
     setEmployeeId(credentials.employeeId)
     setTeamMemberIds(TEAM_MEMBERS_BY_LEADER[credentials.employeeId])
+    setTeamLeaderAccess({ employeeId: credentials.employeeId, username: credentials.username.trim(), password: credentials.password })
     setReports(normalizedReports)
     setForm({ ...emptyReport, executive: credentials.username.trim(), employeeId: credentials.employeeId })
     setPortal('teamLeader')
@@ -284,6 +287,7 @@ function App() {
     setUsername('')
     setEmployeeId('')
     setTeamMemberIds([])
+    setTeamLeaderAccess(null)
   }
 
   function handleChange(event) {
@@ -374,7 +378,7 @@ function App() {
       </div>
     </header>
     {notice && <div className="toast"><span className="toast-check"><Check size={15} /></span>{notice}<button onClick={() => setNotice('')} aria-label="Dismiss"><X size={15} /></button></div>}
-    <main className="report-main"><ReportForm form={form} formType={formType} setFormType={setFormType} username={username} reports={reports} onChange={handleChange} onSubmit={submitReport} onNoLeads={submitNoLeads} />{portal === 'teamLeader' && <TeamMembersData reports={reports} employeeIds={teamMemberIds} />}</main>
+    <main className="report-main"><ReportForm form={form} formType={formType} setFormType={setFormType} username={username} employeeId={employeeId} reports={reports} setReports={setReports} onChange={handleChange} onSubmit={submitReport} onNoLeads={submitNoLeads} />{portal === 'teamLeader' && <TeamMembersData reports={reports} setReports={setReports} employeeIds={teamMemberIds} teamLeaderAccess={teamLeaderAccess} />}</main>
   </div>
 }
 
@@ -392,6 +396,10 @@ function normalizeSheetReport(report) {
     customer: report['Customer Name'] || report.Customer || '',
     phone: String(report['Contact No.'] || report['Phone No.'] || report['Phone Number'] || report.Phone || ''),
     noLeads: report['No Leads'] || report.noLeads || '',
+    lastEditedBy: report['Last Edited By'] || '',
+    lastEditedEmployeeId: String(report['Last Edited Employee ID'] || ''),
+    lastEditedRole: report['Last Edited Role'] || '',
+    lastEditedDate: report['Last Edited Date'] || '',
     location: report.Location || '',
     companyName: report['Company Name'] || '',
     netSalary: Number(report['Net Salary'] || 0),
@@ -631,6 +639,9 @@ function AdminPortal({ username, reports, setReports, onLogout }) {
       id: editingReport.id,
       sourceTab: selectedForm,
       values: spreadsheetValues,
+      editorRole: 'admin',
+      editorName: username,
+      editedAt: new Date().toLocaleDateString('en-GB'),
     })
     setSavingEdit(false)
 
@@ -644,6 +655,9 @@ function AdminPortal({ username, reports, setReports, onLogout }) {
       normalizedEditValues[`${field.key}Value`] = editValues[field.key]
       normalizedEditValues[field.key] = formatReportDate(editValues[field.key])
     })
+    normalizedEditValues.lastEditedBy = username
+    normalizedEditValues.lastEditedRole = 'admin'
+    normalizedEditValues.lastEditedDate = new Date().toLocaleDateString('en-GB')
     const updatedReports = reports.map((report) => report.id === editingReport.id
       ? { ...report, ...normalizedEditValues }
       : report)
@@ -666,7 +680,7 @@ function AdminPortal({ username, reports, setReports, onLogout }) {
         </section>
         {hasAppliedFilter ? <section className="admin-table-card">
           <div className="admin-table-toolbar"><span>{visibleReports.length} matching {selectedForm.toLowerCase()} entr{visibleReports.length === 1 ? 'y' : 'ies'}</span>{visibleReports.length > 0 && <button className="delete-filtered-button" onClick={deleteFilteredReports}><Trash2 size={15} /> Delete filtered data</button>}</div>
-          <div className="admin-table-wrap"><table><thead><tr><th>S.No.</th>{formSchema.map((field) => <th key={field.key}>{field.label}</th>)}<th>Actions</th></tr></thead><tbody>{visibleReports.map((report) => <tr key={report.id}><td>{String(report.id).split(':').pop()}</td>{formSchema.map((field) => <td key={field.key} className={field.key === 'remark' ? 'remark-cell' : ''}>{field.key === 'noLeads' ? (report.noLeads ? 'TRUE' : '-') : field.type === 'number' && report[field.key] !== '' && report[field.key] != null ? formatCurrency(report[field.key]) : field.type === 'date' ? formatAdminTableDate(report[field.key]) : report[field.key] || '-'}</td>)}<td><button className="admin-edit-button" onClick={() => beginEdit(report)}>Edit</button></td></tr>)}</tbody></table></div>
+          <div className="admin-table-wrap"><table><thead><tr><th>S.No.</th>{formSchema.map((field) => <th key={field.key}>{field.label}</th>)}<th>Updated</th><th>Actions</th></tr></thead><tbody>{visibleReports.map((report) => <tr key={report.id}><td>{String(report.id).split(':').pop()}</td>{formSchema.map((field) => <td key={field.key} className={field.key === 'remark' ? 'remark-cell' : ''}>{field.key === 'noLeads' ? (report.noLeads ? 'TRUE' : '-') : field.type === 'number' && report[field.key] !== '' && report[field.key] != null ? formatCurrency(report[field.key]) : field.type === 'date' ? formatAdminTableDate(report[field.key]) : report[field.key] || '-'}</td>)}<td>{report.lastEditedDate ? <span className="edit-flag"><i />Updated by {report.lastEditedBy || report.executive} on {report.lastEditedDate}</span> : '-'}</td><td><button className="admin-edit-button" onClick={() => beginEdit(report)}>Edit</button></td></tr>)}</tbody></table></div>
           {visibleReports.length === 0 && <div className="empty-state">No {selectedForm.toLowerCase()} entries match the selected filters.</div>}
           <div className="admin-table-footer">Showing {visibleReports.length} of {reports.filter((report) => report.reportType === selectedForm).length} {selectedForm.toLowerCase()} entries<button type="button" className="download-report-button" onClick={downloadFilteredReports} disabled={visibleReports.length === 0}><FileSpreadsheet size={16} /> Download Excel</button></div>
         </section> : <div className="admin-empty-prompt"><Search size={22} /><strong>Apply a filter to view entries</strong><span>The table will appear after you filter {selectedForm.toLowerCase()} data.</span></div>}
@@ -690,17 +704,65 @@ function AdminSchemaField({ field, value, onChange, filterMode = false }) {
   const fieldLabel = filterMode ? `Filter ${field.label}` : field.label
   const placeholder = filterMode ? `Filter by ${field.label.toLowerCase()}` : `Enter ${field.label.toLowerCase()}`
   if (field.options) return <label className="field"><span>{fieldLabel}</span><select name={field.key} value={value} onChange={onChange}><option value="">{filterMode ? 'All' : 'Select'} {field.label.toLowerCase()}</option>{field.options.map((option) => <option key={option}>{option}</option>)}</select></label>
+  if (field.type === 'checkbox') return <label className="field checkbox-field"><span>{fieldLabel}</span><input name={field.key} type="checkbox" checked={Boolean(value)} onChange={(event) => onChange({ target: { name: field.key, value: event.target.checked } })} /></label>
   if (field.type === 'textarea') return <label className="field"><span>{fieldLabel}</span><textarea name={field.key} value={value} onChange={onChange} placeholder={placeholder} rows="3" /></label>
   return <label className="field"><span>{fieldLabel}</span><input name={field.key} type={field.type || 'text'} value={value} onChange={onChange} placeholder={placeholder} /></label>
+}
+
+function ReportEditDialog({ report, schema, editor, teamLeaderAccess, onClose, onSaved }) {
+  const [values, setValues] = useState(() => Object.fromEntries(schema.map((field) => [
+    field.key,
+    field.type === 'date' ? report[`${field.key}Value`] || reportDateInput(report[field.key]) : report[field.key] ?? '',
+  ])))
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  async function save(event) {
+    event.preventDefault()
+    setSaving(true)
+    setError('')
+    const spreadsheetValues = { ...values }
+    schema.filter((field) => field.type === 'date').forEach((field) => {
+      spreadsheetValues[field.key] = dateForSpreadsheet(values[field.key])
+    })
+    const editedAt = new Date().toLocaleDateString('en-GB')
+    const payload = {
+      id: report.id,
+      sourceTab: report.reportType || report.formType,
+      values: spreadsheetValues,
+      editorName: editor.username,
+      editorEmployeeId: editor.employeeId,
+      editedAt,
+    }
+    const result = editor.role === 'teamLeader'
+      ? await updateTeamReportInGoogleSheets({ ...payload, leaderEmployeeId: teamLeaderAccess.employeeId, leaderPassword: teamLeaderAccess.password })
+      : await updateReportInGoogleSheets({ ...payload, editorRole: 'employee' })
+    setSaving(false)
+
+    if (!result.updated) {
+      setError('Could not save this report. Please try again.')
+      return
+    }
+
+    const updatedReport = { ...report, ...values, lastEditedBy: editor.username, lastEditedEmployeeId: editor.employeeId, lastEditedRole: editor.role, lastEditedDate: editedAt }
+    schema.filter((field) => field.type === 'date').forEach((field) => {
+      updatedReport[`${field.key}Value`] = values[field.key]
+      updatedReport[field.key] = formatReportDate(values[field.key])
+    })
+    onSaved(updatedReport)
+  }
+
+  return <div className="admin-edit-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) onClose() }}><section className="admin-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="employee-edit-title"><div className="admin-edit-heading"><div><p className="eyebrow">{(report.reportType || report.formType).toUpperCase()}</p><h2 id="employee-edit-title">Edit report</h2></div><button className="icon-button" onClick={onClose} aria-label="Close edit form" disabled={saving}><X size={18} /></button></div><form onSubmit={save}><div className="admin-edit-grid">{schema.filter((field) => field.key !== 'executive').map((field) => <AdminSchemaField key={field.key} field={field} value={values[field.key] ?? ''} onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))} />)}</div>{error && <p className="auth-error">{error}</p>}<div className="form-actions"><button type="button" className="secondary-button" onClick={onClose} disabled={saving}>Cancel</button><button type="submit" className="primary-button" disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button></div></form></section></div>
 }
 
 function getInitials(name) {
   return name.split(' ').map((word) => word[0]).join('').slice(0, 2).toUpperCase()
 }
 
-function ReportForm({ form, formType, setFormType, username, reports, onChange, onSubmit, onNoLeads }) {
+function ReportForm({ form, formType, setFormType, username, employeeId, reports, setReports, onChange, onSubmit, onNoLeads }) {
   const [showMyReports, setShowMyReports] = useState(false)
   const [noLeadsSubmitted, setNoLeadsSubmitted] = useState(false)
+  const [editingReport, setEditingReport] = useState(null)
   const [reportFilters, setReportFilters] = useState({ from: '', to: '', customer: '' })
   const formTabs = ['Leads Form', 'Login Form', 'Disbursement Form']
   const reportSchema = ADMIN_FORM_SCHEMAS[formType]
@@ -733,6 +795,13 @@ function ReportForm({ form, formType, setFormType, username, reports, onChange, 
     await downloadReportWorkbook(`${formType.replaceAll(' ', '-')}-my-reports.xlsx`, headers, rows)
   }
 
+  function applyEditedReport(updatedReport) {
+    const updatedReports = reports.map((report) => report.id === updatedReport.id ? updatedReport : report)
+    setReports(updatedReports)
+    localStorage.setItem('rudransh-reports', JSON.stringify(updatedReports))
+    setEditingReport(null)
+  }
+
   return (
     <>
       <section className="page-heading">
@@ -754,8 +823,9 @@ function ReportForm({ form, formType, setFormType, username, reports, onChange, 
           <div className="admin-filter-heading"><div><h2>Filter {formType}</h2><p>Combine date range and customer name filters.</p></div><button className="clear-filters" onClick={() => setReportFilters({ from: '', to: '', customer: '' })}>Clear filters</button></div>
           <div className="admin-filter-grid employee-report-filter-grid"><div className="field admin-date-range-field"><span>Filter Date</span><div className="admin-date-range-inputs"><label><span>From</span><input aria-label="Report date from" type="date" value={reportFilters.from} onChange={(event) => setReportFilters((current) => ({ ...current, from: event.target.value }))} /></label><label><span>To</span><input aria-label="Report date to" type="date" value={reportFilters.to} onChange={(event) => setReportFilters((current) => ({ ...current, to: event.target.value }))} /></label></div></div><AdminSchemaField field={{ key: 'customer', label: 'Customer Name' }} value={reportFilters.customer} onChange={(event) => setReportFilters((current) => ({ ...current, customer: event.target.value }))} filterMode /></div>
         </section>
-        {filteredEmployeeReports.length > 0 ? <div className="admin-table-wrap"><table><thead><tr>{reportSchema.map((field) => <th key={field.key}>{field.label}</th>)}</tr></thead><tbody>{filteredEmployeeReports.map((report) => <tr key={report.id}>{reportSchema.map((field) => <td key={field.key} className={field.key === 'remark' ? 'remark-cell' : ''}>{renderReportValue(report, field)}</td>)}</tr>)}</tbody></table></div> : <div className="empty-state">{employeeReports.length ? 'No reports match these filters.' : `No ${formType.toLowerCase()} reports yet.`}</div>}
+        {filteredEmployeeReports.length > 0 ? <div className="admin-table-wrap"><table><thead><tr>{reportSchema.map((field) => <th key={field.key}>{field.label}</th>)}<th>Actions</th></tr></thead><tbody>{filteredEmployeeReports.map((report) => <tr key={report.id}>{reportSchema.map((field) => <td key={field.key} className={field.key === 'remark' ? 'remark-cell' : ''}>{renderReportValue(report, field)}</td>)}<td><button type="button" className="admin-edit-button" onClick={() => setEditingReport(report)}>Edit</button></td></tr>)}</tbody></table></div> : <div className="empty-state">{employeeReports.length ? 'No reports match these filters.' : `No ${formType.toLowerCase()} reports yet.`}</div>}
         <div className="admin-table-footer">Showing {filteredEmployeeReports.length} of {employeeReports.length} {formType.toLowerCase()} reports<button type="button" className="download-report-button" onClick={downloadEmployeeReports} disabled={filteredEmployeeReports.length === 0}><FileSpreadsheet size={16} /> Download Excel</button></div>
+        {editingReport && <ReportEditDialog report={editingReport} schema={reportSchema} editor={{ username, employeeId, role: 'employee' }} onClose={() => setEditingReport(null)} onSaved={applyEditedReport} />}
       </section> : <>
         {formType === 'Leads Form' && <label className="no-leads-toggle"><input type="checkbox" checked={noLeadsSubmitted} onChange={(event) => { const checked = event.target.checked; setNoLeadsSubmitted(checked); if (checked) onNoLeads() }} /><span>No Leads</span></label>}
         {formType === 'Leads Form' && noLeadsSubmitted ? <div className="no-leads-confirmation">No Leads recorded for today.</div> : <form className="report-form" onSubmit={onSubmit}>
@@ -803,8 +873,9 @@ function ReportForm({ form, formType, setFormType, username, reports, onChange, 
   )
 }
 
-function TeamMembersData({ reports, employeeIds }) {
+function TeamMembersData({ reports, setReports, employeeIds, teamLeaderAccess }) {
   const [selectedForm, setSelectedForm] = useState('Leads Form')
+  const [editingReport, setEditingReport] = useState(null)
   const formTabs = Object.keys(ADMIN_FORM_SCHEMAS)
   const formSchema = ADMIN_FORM_SCHEMAS[selectedForm]
   const teamReports = reports.filter((report) => (report.reportType || report.formType) === selectedForm
@@ -832,15 +903,23 @@ function TeamMembersData({ reports, employeeIds }) {
     await downloadReportWorkbook(`${selectedForm.replaceAll(' ', '-')}-team-reports.xlsx`, headers, rows)
   }
 
+  function applyEditedReport(updatedReport) {
+    const updatedReports = reports.map((report) => report.id === updatedReport.id ? updatedReport : report)
+    setReports(updatedReports)
+    localStorage.setItem('rudransh-reports', JSON.stringify(updatedReports))
+    setEditingReport(null)
+  }
+
   return <section className="team-members-section">
     <div className="team-members-heading"><div><p className="eyebrow">TEAM LEADER</p><h2>View team members data</h2><p className="subheading">Reports are limited to employee IDs assigned to your team.</p></div><span className="admin-count">{teamReports.length} reports</span></div>
     <div className="admin-form-tabs" role="tablist" aria-label="Team report type">
       {formTabs.map((tab) => <button key={tab} type="button" role="tab" aria-selected={selectedForm === tab} className={selectedForm === tab ? 'admin-form-tab active' : 'admin-form-tab'} onClick={() => setSelectedForm(tab)}>{tab}</button>)}
     </div>
     <section className="admin-table-card employee-report-table">
-      {teamReports.length > 0 ? <div className="admin-table-wrap"><table><thead><tr><th>Employee ID</th>{formSchema.map((field) => <th key={field.key}>{field.label}</th>)}</tr></thead><tbody>{teamReports.map((report) => <tr key={report.id}><td>{report.employeeId}</td>{formSchema.map((field) => <td key={field.key} className={field.key === 'remark' ? 'remark-cell' : ''}>{displayTeamValue(report, field)}</td>)}</tr>)}</tbody></table></div> : <div className="empty-state">No {selectedForm.toLowerCase()} reports found for your team.</div>}
+      {teamReports.length > 0 ? <div className="admin-table-wrap"><table><thead><tr><th>Employee ID</th>{formSchema.map((field) => <th key={field.key}>{field.label}</th>)}<th>Actions</th></tr></thead><tbody>{teamReports.map((report) => <tr key={report.id}><td>{report.employeeId}</td>{formSchema.map((field) => <td key={field.key} className={field.key === 'remark' ? 'remark-cell' : ''}>{displayTeamValue(report, field)}</td>)}<td><button type="button" className="admin-edit-button" onClick={() => setEditingReport(report)}>Edit</button></td></tr>)}</tbody></table></div> : <div className="empty-state">No {selectedForm.toLowerCase()} reports found for your team.</div>}
       <div className="admin-table-footer">Showing {teamReports.length} {selectedForm.toLowerCase()} team reports<button type="button" className="download-report-button" onClick={downloadTeamReports} disabled={teamReports.length === 0}><FileSpreadsheet size={16} /> Download Excel</button></div>
     </section>
+    {editingReport && <ReportEditDialog report={editingReport} schema={formSchema} editor={{ username: teamLeaderAccess.username, employeeId: teamLeaderAccess.employeeId, role: 'teamLeader' }} teamLeaderAccess={teamLeaderAccess} onClose={() => setEditingReport(null)} onSaved={applyEditedReport} />}
   </section>
 }
 

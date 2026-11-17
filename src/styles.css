@@ -124,6 +124,10 @@ body { background: #f6f7f8; }
 .admin-table-card td strong { color: #304f6d; }
 .remark-cell { max-width: 210px; white-space: normal; line-height: 1.35; }
 .admin-table-footer { border-top: 1px solid #edf1f4; padding: 14px 15px; color: #8b9aa8; font-size: 10px; }
+.edit-flag { display: inline-flex; align-items: center; gap: 6px; color: #b94a48; white-space: nowrap; }
+.edit-flag i { width: 8px; height: 8px; border-radius: 50%; background: #d33f49; display: inline-block; flex: 0 0 auto; }
+.field.checkbox-field { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.field.checkbox-field input { width: 16px; height: 16px; accent-color: #173b63; }
 .download-report-button { margin-left: 12px; border: 1px solid #d8e1e9; border-radius: 6px; background: #fff; color: #335675; padding: 7px 10px; display: inline-flex; align-items: center; gap: 7px; font-size: 10px; font-weight: 700; }
 .download-report-button:hover:not(:disabled) { border-color: #c6a03b; background: #fffdf6; }
 .download-report-button:disabled { opacity: .5; cursor: not-allowed; }

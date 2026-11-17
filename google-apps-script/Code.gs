@@ -98,8 +98,16 @@ function doPost(e) {
 			const sheet = spreadsheet.getSheetByName(tabName);
 			if (!sheet) throw new Error('The report tab was not found.');
 
-			const lastColumn = sheet.getLastColumn();
-			const headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+			let lastColumn = sheet.getLastColumn();
+			let headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+			const auditHeaders = ['Last Edited By', 'Last Edited Employee ID', 'Last Edited Role', 'Last Edited Date'];
+			auditHeaders.forEach((header) => {
+				if (!headers.some((existing) => String(existing).trim().toLowerCase() === header.toLowerCase())) {
+					lastColumn += 1;
+					sheet.getRange(1, lastColumn).setValue(header);
+				}
+			});
+			headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
 			let targetRow = 0;
 			for (let rowIndex = 2; rowIndex <= sheet.getLastRow(); rowIndex += 1) {
 				if (String(sheet.getRange(rowIndex, 1).getValue()) === serial) {
@@ -109,10 +117,29 @@ function doPost(e) {
 			}
 			if (!targetRow) throw new Error('The report row was not found.');
 
+			const editorRole = String(data.editorRole || 'admin');
+			const employeeIdIndex = headers.findIndex((header) => String(header).trim().toLowerCase() === 'employee id');
+			const rowEmployeeId = employeeIdIndex >= 0 ? String(sheet.getRange(targetRow, employeeIdIndex + 1).getValue() || '').padStart(3, '0') : '';
+			if (editorRole === 'employee' && (!data.editorEmployeeId || rowEmployeeId !== String(data.editorEmployeeId).padStart(3, '0'))) {
+				throw new Error('Employees can edit only their own reports.');
+			}
+			if (editorRole === 'teamLeader') {
+				const membersByLeader = {
+					'024': ['019', '018', '012', '008', '032', '009'],
+					'027': ['030', '028', '029', '031'],
+				};
+				const leaderId = String(data.leaderEmployeeId || '');
+				const expectedPassword = PropertiesService.getScriptProperties().getProperty(`TEAM_LEADER_${leaderId}_PASSWORD`);
+				if (!expectedPassword || data.leaderPassword !== expectedPassword || !membersByLeader[leaderId]?.includes(rowEmployeeId)) {
+					throw new Error('Team leaders can edit only reports assigned to their team.');
+				}
+			}
+
 			const valuesByHeader = {
 				executivename: 'executive',
 				date: 'date',
 				customername: 'customer',
+				noleads: 'noLeads',
 				contactno: 'phone',
 				phoneno: 'phone',
 				phonenumber: 'phone',
@@ -137,10 +164,22 @@ function doPost(e) {
 			headers.forEach((header, index) => {
 				if (index === 0) return;
 				const normalizedHeader = String(header).toLowerCase().replace(/[^a-z0-9]/g, '');
+				if (editorRole !== 'admin' && normalizedHeader === 'executivename') return;
 				const valueKey = valuesByHeader[normalizedHeader];
 				if (!valueKey || !Object.prototype.hasOwnProperty.call(editedValues, valueKey)) return;
 				sheet.getRange(targetRow, index + 1).setValue(editedValues[valueKey]);
 				updatedCellCount += 1;
+			});
+			const editDate = data.editedAt || new Date().toLocaleDateString('en-GB');
+			const auditValues = {
+				'last edited by': data.editorName || '',
+				'last edited employee id': data.editorEmployeeId || data.leaderEmployeeId || '',
+				'last edited role': editorRole,
+				'last edited date': editDate,
+			};
+			headers.forEach((header, index) => {
+				const auditValue = auditValues[String(header).trim().toLowerCase()];
+				if (auditValue !== undefined) sheet.getRange(targetRow, index + 1).setValue(auditValue);
 			});
 			if (updatedCellCount === 0) throw new Error('No editable fields matched the selected row.');
 
@@ -160,9 +199,9 @@ function doPost(e) {
 		if (!sheet) sheet = spreadsheet.insertSheet(tabName);
 
 		const headersByForm = {
-			'Leads Form': ['S.No.', 'Executive Name', 'Date', 'Customer Name', 'Company Name', 'Net Salary', 'Location', 'Obligation', 'BT/FRESH', 'Loan Amount', 'Login Bank', 'Remark', 'EMI Amount', 'Current Outstanding Amount', 'Contact No.', 'Employee ID', 'No Leads'],
-			'Login Form': ['S.No.', 'Executive Name', 'Date', 'Customer Name', 'Loan Amount', 'Bank', 'Login Date', 'Login Status', 'Remark', 'Contact No.', 'Employee ID'],
-			'Disbursement Form': ['S.No.', 'Executive Name', 'Date', 'Customer Name', 'Disbursement Amount', 'Bank', 'Cash/Bank Deviation', 'Contact No.', 'Employee ID'],
+			'Leads Form': ['S.No.', 'Executive Name', 'Date', 'Customer Name', 'Company Name', 'Net Salary', 'Location', 'Obligation', 'BT/FRESH', 'Loan Amount', 'Login Bank', 'Remark', 'EMI Amount', 'Current Outstanding Amount', 'Contact No.', 'Employee ID', 'No Leads', 'Last Edited By', 'Last Edited Employee ID', 'Last Edited Role', 'Last Edited Date'],
+			'Login Form': ['S.No.', 'Executive Name', 'Date', 'Customer Name', 'Loan Amount', 'Bank', 'Login Date', 'Login Status', 'Remark', 'Contact No.', 'Employee ID', 'Last Edited By', 'Last Edited Employee ID', 'Last Edited Role', 'Last Edited Date'],
+			'Disbursement Form': ['S.No.', 'Executive Name', 'Date', 'Customer Name', 'Disbursement Amount', 'Bank', 'Cash/Bank Deviation', 'Contact No.', 'Employee ID', 'Last Edited By', 'Last Edited Employee ID', 'Last Edited Role', 'Last Edited Date'],
 		};
 		const expectedHeaders = headersByForm[tabName];
 		sheet.getRange(1, 1, 1, expectedHeaders.length).setValues([expectedHeaders]);
