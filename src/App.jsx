@@ -615,6 +615,19 @@ function AdminPortal({ username, reports, setReports, onLogout }) {
     localStorage.setItem('rudransh-reports', JSON.stringify(remaining))
   }
 
+  async function deleteReport(report) {
+    const confirmed = window.confirm(`Permanently delete this ${selectedForm} row from the spreadsheet? This cannot be undone.`)
+    if (!confirmed) return
+
+    const result = await deleteReportsFromGoogleSheets([report.id])
+    if (!result.deleted) return
+
+    const remaining = reports.filter((entry) => String(entry.id) !== String(report.id))
+    setReports(remaining)
+    localStorage.setItem('rudransh-reports', JSON.stringify(remaining))
+    if (editingReport?.id === report.id) setEditingReport(null)
+  }
+
   function beginEdit(report) {
     const values = {}
     formSchema.forEach((field) => {
@@ -680,7 +693,7 @@ function AdminPortal({ username, reports, setReports, onLogout }) {
         </section>
         {hasAppliedFilter ? <section className="admin-table-card">
           <div className="admin-table-toolbar"><span>{visibleReports.length} matching {selectedForm.toLowerCase()} entr{visibleReports.length === 1 ? 'y' : 'ies'}</span>{visibleReports.length > 0 && <button className="delete-filtered-button" onClick={deleteFilteredReports}><Trash2 size={15} /> Delete filtered data</button>}</div>
-          <div className="admin-table-wrap"><table><thead><tr><th>S.No.</th>{formSchema.map((field) => <th key={field.key}>{field.label}</th>)}<th>Updated</th><th>Actions</th></tr></thead><tbody>{visibleReports.map((report) => <tr key={report.id}><td>{String(report.id).split(':').pop()}</td>{formSchema.map((field) => <td key={field.key} className={field.key === 'remark' ? 'remark-cell' : ''}>{field.key === 'noLeads' ? (report.noLeads ? 'TRUE' : '-') : field.type === 'number' && report[field.key] !== '' && report[field.key] != null ? formatCurrency(report[field.key]) : field.type === 'date' ? formatAdminTableDate(report[field.key]) : report[field.key] || '-'}</td>)}<td>{report.lastEditedDate ? <span className="edit-flag"><i />Updated by {report.lastEditedBy || report.executive} on {report.lastEditedDate}</span> : '-'}</td><td><button className="admin-edit-button" onClick={() => beginEdit(report)}>Edit</button></td></tr>)}</tbody></table></div>
+          <div className="admin-table-wrap"><table><thead><tr><th>S.No.</th>{formSchema.map((field) => <th key={field.key}>{field.label}</th>)}<th>Updated</th><th>Actions</th></tr></thead><tbody>{visibleReports.map((report) => <tr key={report.id}><td>{String(report.id).split(':').pop()}</td>{formSchema.map((field) => <td key={field.key} className={field.key === 'remark' ? 'remark-cell' : ''}>{field.key === 'noLeads' ? (report.noLeads ? 'TRUE' : '-') : field.type === 'number' && report[field.key] !== '' && report[field.key] != null ? formatCurrency(report[field.key]) : field.type === 'date' ? formatAdminTableDate(report[field.key]) : report[field.key] || '-'}</td>)}<td>{report.lastEditedDate ? <span className="edit-flag"><i />Updated by {report.lastEditedBy || report.executive} on {report.lastEditedDate}</span> : '-'}</td><td><div className="admin-row-actions"><button className="admin-edit-button" onClick={() => beginEdit(report)}>Edit</button><button className="admin-row-delete-button" onClick={() => deleteReport(report)} aria-label={`Delete ${report.customer || 'report'}`} title="Delete report"><Trash2 size={14} /></button></div></td></tr>)}</tbody></table></div>
           {visibleReports.length === 0 && <div className="empty-state">No {selectedForm.toLowerCase()} entries match the selected filters.</div>}
           <div className="admin-table-footer">Showing {visibleReports.length} of {reports.filter((report) => report.reportType === selectedForm).length} {selectedForm.toLowerCase()} entries<button type="button" className="download-report-button" onClick={downloadFilteredReports} disabled={visibleReports.length === 0}><FileSpreadsheet size={16} /> Download Excel</button></div>
         </section> : <div className="admin-empty-prompt"><Search size={22} /><strong>Apply a filter to view entries</strong><span>The table will appear after you filter {selectedForm.toLowerCase()} data.</span></div>}
